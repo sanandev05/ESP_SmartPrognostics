@@ -1,0 +1,404 @@
+﻿{
+  "Scenario": "Regression",
+  "DataSource": {
+    "Version": 3,
+    "EscapeCharacter": "\"",
+    "ReadMultiLines": false,
+    "KeepDiacritics": false,
+    "KeepPunctuations": false,
+    "AllowQuoting": false,
+    "Type": "TabularFile",
+    "FilePath": "C:\\Users\\Icomp\\Desktop\\Diplom isi\\esp_monitoring_dataset.csv",
+    "Delimiter": ",",
+    "DecimalMarker": ".",
+    "HasHeader": true,
+    "ColumnProperties": [
+      {
+        "ColumnName": "Motor_ID",
+        "ColumnPurpose": "Feature",
+        "ColumnDataFormat": "String",
+        "IsCategorical": true,
+        "Type": "Column",
+        "Version": 5
+      },
+      {
+        "ColumnName": "Cycle",
+        "ColumnPurpose": "Feature",
+        "ColumnDataFormat": "Single",
+        "IsCategorical": false,
+        "Type": "Column",
+        "Version": 5
+      },
+      {
+        "ColumnName": "Current_A",
+        "ColumnPurpose": "Feature",
+        "ColumnDataFormat": "Single",
+        "IsCategorical": false,
+        "Type": "Column",
+        "Version": 5
+      },
+      {
+        "ColumnName": "Vibration_RMS",
+        "ColumnPurpose": "Feature",
+        "ColumnDataFormat": "Single",
+        "IsCategorical": false,
+        "Type": "Column",
+        "Version": 5
+      },
+      {
+        "ColumnName": "Temperature_C",
+        "ColumnPurpose": "Feature",
+        "ColumnDataFormat": "Single",
+        "IsCategorical": false,
+        "Type": "Column",
+        "Version": 5
+      },
+      {
+        "ColumnName": "Pressure_PSI",
+        "ColumnPurpose": "Feature",
+        "ColumnDataFormat": "Single",
+        "IsCategorical": false,
+        "Type": "Column",
+        "Version": 5
+      },
+      {
+        "ColumnName": "Health_Index",
+        "ColumnPurpose": "Feature",
+        "ColumnDataFormat": "Single",
+        "IsCategorical": false,
+        "Type": "Column",
+        "Version": 5
+      },
+      {
+        "ColumnName": "Remaining_Life",
+        "ColumnPurpose": "Label",
+        "ColumnDataFormat": "Single",
+        "IsCategorical": false,
+        "Type": "Column",
+        "Version": 5
+      }
+    ]
+  },
+  "Environment": {
+    "Type": "LocalCPU",
+    "Version": 1
+  },
+  "RunHistory": {
+    "Version": 3,
+    "Type": "Result",
+    "Trials": [
+      {
+        "Version": 1,
+        "Type": "Trial",
+        "TrainerName": "FastTreeRegression",
+        "Score": 0.99688438276120039,
+        "RuntimeInSeconds": 0.231,
+        "Parameter": {
+          "_SCHEMA_": "e0 * e1 * e2 * e3",
+          "e0": {
+            "OutputColumnNames": [
+              "Motor_ID"
+            ],
+            "InputColumnNames": [
+              "Motor_ID"
+            ]
+          },
+          "e1": {
+            "OutputColumnNames": [
+              "Cycle",
+              "Current_A",
+              "Vibration_RMS",
+              "Temperature_C",
+              "Pressure_PSI",
+              "Health_Index"
+            ],
+            "InputColumnNames": [
+              "Cycle",
+              "Current_A",
+              "Vibration_RMS",
+              "Temperature_C",
+              "Pressure_PSI",
+              "Health_Index"
+            ]
+          },
+          "e2": {
+            "InputColumnNames": [
+              "Motor_ID",
+              "Cycle",
+              "Current_A",
+              "Vibration_RMS",
+              "Temperature_C",
+              "Pressure_PSI",
+              "Health_Index"
+            ],
+            "OutputColumnName": "Features"
+          },
+          "e3": {
+            "NumberOfLeaves": 6,
+            "MinimumExampleCountPerLeaf": 22,
+            "NumberOfTrees": 4,
+            "MaximumBinCountPerFeature": 221,
+            "FeatureFraction": 0.99999999,
+            "LearningRate": 0.99999977667298645,
+            "LabelColumnName": "Remaining_Life",
+            "FeatureColumnName": "Features",
+            "DiskTranspose": false
+          }
+        }
+      },
+      {
+        "Version": 1,
+        "Type": "Trial",
+        "TrainerName": "LightGbmRegression",
+        "Score": 0.99466328366856394,
+        "RuntimeInSeconds": 34.272,
+        "Parameter": {
+          "_SCHEMA_": "e0 * e1 * e2 * e5",
+          "e0": {
+            "OutputColumnNames": [
+              "Motor_ID"
+            ],
+            "InputColumnNames": [
+              "Motor_ID"
+            ]
+          },
+          "e1": {
+            "OutputColumnNames": [
+              "Cycle",
+              "Current_A",
+              "Vibration_RMS",
+              "Temperature_C",
+              "Pressure_PSI",
+              "Health_Index"
+            ],
+            "InputColumnNames": [
+              "Cycle",
+              "Current_A",
+              "Vibration_RMS",
+              "Temperature_C",
+              "Pressure_PSI",
+              "Health_Index"
+            ]
+          },
+          "e2": {
+            "InputColumnNames": [
+              "Motor_ID",
+              "Cycle",
+              "Current_A",
+              "Vibration_RMS",
+              "Temperature_C",
+              "Pressure_PSI",
+              "Health_Index"
+            ],
+            "OutputColumnName": "Features"
+          },
+          "e5": {
+            "NumberOfLeaves": 1032,
+            "MinimumExampleCountPerLeaf": 28,
+            "LearningRate": 0.46456419718741981,
+            "NumberOfTrees": 2683,
+            "SubsampleFraction": 0.040289640042279,
+            "MaximumBinCountPerFeature": 212,
+            "FeatureFraction": 0.92888257588686063,
+            "L1Regularization": 2E-10,
+            "L2Regularization": 0.04060422057893584,
+            "LabelColumnName": "Remaining_Life",
+            "FeatureColumnName": "Features"
+          }
+        }
+      },
+      {
+        "Version": 1,
+        "Type": "Trial",
+        "TrainerName": "FastForestRegression",
+        "Score": 0.99408297512327892,
+        "RuntimeInSeconds": 0.302,
+        "Parameter": {
+          "_SCHEMA_": "e0 * e1 * e2 * e4",
+          "e0": {
+            "OutputColumnNames": [
+              "Motor_ID"
+            ],
+            "InputColumnNames": [
+              "Motor_ID"
+            ]
+          },
+          "e1": {
+            "OutputColumnNames": [
+              "Cycle",
+              "Current_A",
+              "Vibration_RMS",
+              "Temperature_C",
+              "Pressure_PSI",
+              "Health_Index"
+            ],
+            "InputColumnNames": [
+              "Cycle",
+              "Current_A",
+              "Vibration_RMS",
+              "Temperature_C",
+              "Pressure_PSI",
+              "Health_Index"
+            ]
+          },
+          "e2": {
+            "InputColumnNames": [
+              "Motor_ID",
+              "Cycle",
+              "Current_A",
+              "Vibration_RMS",
+              "Temperature_C",
+              "Pressure_PSI",
+              "Health_Index"
+            ],
+            "OutputColumnName": "Features"
+          },
+          "e4": {
+            "NumberOfTrees": 4,
+            "NumberOfLeaves": 4,
+            "FeatureFraction": 1.0,
+            "LabelColumnName": "Remaining_Life",
+            "FeatureColumnName": "Features"
+          }
+        }
+      },
+      {
+        "Version": 1,
+        "Type": "Trial",
+        "TrainerName": "FastForestRegression",
+        "Score": 0.99408297512327892,
+        "RuntimeInSeconds": 0.153,
+        "Parameter": {
+          "_SCHEMA_": "e0 * e1 * e2 * e4",
+          "e0": {
+            "OutputColumnNames": [
+              "Motor_ID"
+            ],
+            "InputColumnNames": [
+              "Motor_ID"
+            ]
+          },
+          "e1": {
+            "OutputColumnNames": [
+              "Cycle",
+              "Current_A",
+              "Vibration_RMS",
+              "Temperature_C",
+              "Pressure_PSI",
+              "Health_Index"
+            ],
+            "InputColumnNames": [
+              "Cycle",
+              "Current_A",
+              "Vibration_RMS",
+              "Temperature_C",
+              "Pressure_PSI",
+              "Health_Index"
+            ]
+          },
+          "e2": {
+            "InputColumnNames": [
+              "Motor_ID",
+              "Cycle",
+              "Current_A",
+              "Vibration_RMS",
+              "Temperature_C",
+              "Pressure_PSI",
+              "Health_Index"
+            ],
+            "OutputColumnName": "Features"
+          },
+          "e4": {
+            "NumberOfTrees": 4,
+            "NumberOfLeaves": 8,
+            "FeatureFraction": 1.0,
+            "LabelColumnName": "Remaining_Life",
+            "FeatureColumnName": "Features"
+          }
+        }
+      },
+      {
+        "Version": 1,
+        "Type": "Trial",
+        "TrainerName": "FastForestRegression",
+        "Score": 0.99408297512327892,
+        "RuntimeInSeconds": 0.148,
+        "Parameter": {
+          "_SCHEMA_": "e0 * e1 * e2 * e4",
+          "e0": {
+            "OutputColumnNames": [
+              "Motor_ID"
+            ],
+            "InputColumnNames": [
+              "Motor_ID"
+            ]
+          },
+          "e1": {
+            "OutputColumnNames": [
+              "Cycle",
+              "Current_A",
+              "Vibration_RMS",
+              "Temperature_C",
+              "Pressure_PSI",
+              "Health_Index"
+            ],
+            "InputColumnNames": [
+              "Cycle",
+              "Current_A",
+              "Vibration_RMS",
+              "Temperature_C",
+              "Pressure_PSI",
+              "Health_Index"
+            ]
+          },
+          "e2": {
+            "InputColumnNames": [
+              "Motor_ID",
+              "Cycle",
+              "Current_A",
+              "Vibration_RMS",
+              "Temperature_C",
+              "Pressure_PSI",
+              "Health_Index"
+            ],
+            "OutputColumnName": "Features"
+          },
+          "e4": {
+            "NumberOfTrees": 4,
+            "NumberOfLeaves": 4,
+            "FeatureFraction": 1.0,
+            "LabelColumnName": "Remaining_Life",
+            "FeatureColumnName": "Features"
+          }
+        }
+      }
+    ],
+    "Estimators": {
+      "e0": "OneHotEncoding",
+      "e1": "ReplaceMissingValues",
+      "e2": "Concatenate",
+      "e3": "FastTreeRegression",
+      "e4": "FastForestRegression",
+      "e5": "LightGbmRegression",
+      "e6": "LbfgsPoissonRegressionRegression",
+      "e7": "SdcaRegression"
+    },
+    "Schema": "e0 * e1 * e2 * (e3 + e4 + e5 + e6 + e7)",
+    "MetricName": "RSquared",
+    "ModelFilePath": "C:\\Users\\Icomp\\source\\repos\\ESP_SmartPrognostics\\MLModel.mlnet"
+  },
+  "Type": "TrainingConfig",
+  "Version": 5,
+  "TrainingOption": {
+    "Version": 2,
+    "Subsampling": false,
+    "Type": "RegressionTrainingOption",
+    "TrainingTime": 120,
+    "LabelColumn": "Remaining_Life",
+    "ValidationOption": {
+      "Version": 0,
+      "Type": "CrossValidationValidationOption",
+      "NumberOfFolds": 5
+    }
+  }
+}

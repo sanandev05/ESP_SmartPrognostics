@@ -1,0 +1,374 @@
+@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Mühərrik-01 Diaqnostika Mərkəzi";
+
+    var now = DateTime.Now.ToString("dd.MM.yyyy HH:mm:ss");
+
+    var invariant = System.Globalization.CultureInfo.InvariantCulture;
+}
+
+<style>
+    /* ── Tema Dəyişdirmə Düyməsi ── */
+    .theme-toggle-container {
+        margin-bottom: 15px;
+    }
+
+    .theme-toggle-btn {
+        background: rgba(255, 255, 255, 0.1);
+        color: #fff;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        padding: 6px 12px;
+        border-radius: 20px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: 0.3s;
+    }
+
+        .theme-toggle-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+    .icon-dark {
+        display: none;
+    }
+
+    /* ═════════════════════════════════════════════════════════════════════════
+           İŞIQLI REJİM (LIGHT MODE) TAM OVERRIDE
+           Bütün qaranlıq qalan hissələr bura daxil edildi
+        ═════════════════════════════════════════════════════════════════════════ */
+    .diagnostic-shell.light-mode {
+        background-color: #f4f6f9 !important;
+        color: #1e293b !important;
+    }
+
+        /* Əsas panellər və arxa planlar */
+        .diagnostic-shell.light-mode .lab-header,
+        .diagnostic-shell.light-mode .lab-panel,
+        .diagnostic-shell.light-mode .sensor-card,
+        .diagnostic-shell.light-mode .input-panel {
+            background-color: #ffffff !important;
+            border: 1px solid #e2e8f0 !important;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05) !important;
+        }
+
+        /* Üst Başlıqdakı qutular (Vaxt möhürü, Proqnoz mühərriki və s.) */
+        .diagnostic-shell.light-mode .lab-header-grid div {
+            background-color: #f8fafc !important;
+            border: 1px solid #e2e8f0 !important;
+        }
+
+        /* Sağlamlıq və Deqradasiya Qutuları */
+        .diagnostic-shell.light-mode .health-score {
+            background-color: #f8fafc !important;
+            border: 1px solid #e2e8f0 !important;
+        }
+
+        .diagnostic-shell.light-mode .health-bar {
+            background-color: #e2e8f0 !important; /* Boş qalan hissənin rəngi açıq boz */
+        }
+
+        /* İcra Əmri (Command Box) - Şəkildə qaranlıq qalan hissə */
+        .diagnostic-shell.light-mode .command-box {
+            background-color: #f0fdf4 !important; /* Default açıq yaşıl */
+            border: 1px solid #bbf7d0 !important;
+            color: #166534 !important;
+        }
+
+            .diagnostic-shell.light-mode .command-box p,
+            .diagnostic-shell.light-mode .command-box strong {
+                color: inherit !important;
+            }
+            /* İcra Əmri təhlükəli olanda qırmızımtıl */
+            .diagnostic-shell.light-mode .command-box.Danger {
+                background-color: #fef2f2 !important;
+                border-color: #fecaca !important;
+                color: #991b1b !important;
+            }
+
+        /* ML Mühərrik Proqnozları Jurnalı (Loglar) - Şəkildə qaranlıq qalan hissə */
+        .diagnostic-shell.light-mode .prediction-logs div {
+            background-color: #f8fafc !important;
+            border: 1px solid #e2e8f0 !important;
+            border-bottom: 2px solid #cbd5e1 !important;
+            margin-bottom: 8px;
+            border-radius: 6px;
+        }
+
+        /* Mətn rəngləri */
+        .diagnostic-shell.light-mode h1,
+        .diagnostic-shell.light-mode h2,
+        .diagnostic-shell.light-mode strong {
+            color: #0f172a !important;
+        }
+
+        .diagnostic-shell.light-mode span,
+        .diagnostic-shell.light-mode p,
+        .diagnostic-shell.light-mode small,
+        .diagnostic-shell.light-mode time,
+        .diagnostic-shell.light-mode .chart-note {
+            color: #475569 !important;
+        }
+
+        /* İnput və Form elementləri */
+        .diagnostic-shell.light-mode input {
+            background-color: #ffffff !important;
+            color: #0f172a !important;
+            border: 1px solid #cbd5e1 !important;
+        }
+
+        .diagnostic-shell.light-mode button[type="submit"] {
+            background-color: #2563eb !important;
+            color: white !important;
+        }
+
+        /* Düymənin işıqlı rejimdəki halı */
+        .diagnostic-shell.light-mode .theme-toggle-btn {
+            background: #e2e8f0;
+            color: #1e293b;
+            border-color: #cbd5e1;
+        }
+
+        .diagnostic-shell.light-mode .icon-light {
+            display: none;
+        }
+
+        .diagnostic-shell.light-mode .icon-dark {
+            display: inline;
+        }
+</style>
+
+<section class="diagnostic-shell" id="diagnosticShell" data-dashboard
+         data-rul="@Model.RemainingLife.ToString("0.0", invariant)"
+         data-health="@Model.Health_Index.ToString("0.0", invariant)"
+         data-degradation="@Model.DegradationPercent.ToString("0.0", invariant)"
+         data-confidence="@Model.ConfidenceScore.ToString("0.0", invariant)"
+         data-risk="@Model.RiskClass"
+         data-vibration="@Model.Vibration_RMS.ToString("0.###", invariant)"
+         data-temperature="@Model.Temperature_C.ToString("0.#", invariant)"
+         data-current="@Model.Current_A.ToString("0.#", invariant)"
+         data-pressure="@Model.Pressure_PSI.ToString("0.#", invariant)"
+         data-bearing="@Model.BearingFault"
+         data-stator="@Model.StatorFault"
+         data-rotor="@Model.RotorFault"
+         data-anomaly="@Model.AnomalyState">
+
+    <header class="lab-header">
+        <div>
+            <div class="theme-toggle-container">
+                <button type="button" id="themeToggleBtn" class="theme-toggle-btn">
+                    <span class="icon-light">☀️ İşıqlı rejim</span>
+                    <span class="icon-dark">🌙 Qaranlıq rejim</span>
+                </button>
+            </div>
+            <span class="status-chip @Model.RiskClass">@Model.RiskLevel</span>
+            <h1>Mühərrik-01 Diaqnostika Mərkəzi</h1>
+            <p>@Model.EngineModel | Seriya nömrəsi: @Model.SerialNumber</p>
+        </div>
+        <div class="lab-header-grid">
+            <div><span>Vaxt möhürü</span><strong>@now</strong></div>
+            <div><span>Proqnoz mühərriki</span><strong>@Model.ModelStatus</strong></div>
+            <div><span>Nasazlıq imzası</span><strong>@Model.FaultLabel</strong></div>
+            <div><span>ISO 10816 həddi</span><strong>7.1 mm/s</strong></div>
+        </div>
+    </header>
+
+    <div class="lab-grid">
+        <main class="primary-column">
+            <section class="lab-panel rul-panel">
+                <div class="section-title">
+                    <div>
+                        <span>QÖM və sağlamlıq analitikası</span>
+                        <h2>Qalıq Faydalı Ömür</h2>
+                    </div>
+                    <strong>@Model.RemainingLife.ToString("0.00") saat</strong>
+                </div>
+
+                <div class="rul-content">
+                    <div class="gauge-stage">
+                        <canvas id="rulGauge" aria-label="Semi-circle RUL gauge"></canvas>
+                        <div class="gauge-readout">
+                            <span>@Model.RemainingLife.ToString("0")</span>
+                            <small>saat</small>
+                        </div>
+                    </div>
+                    <div class="health-stack">
+                        <div class="health-score">
+                            <span>Sağlamlıq göstəricisi</span>
+                            <strong>@Model.Health_Index.ToString("0.0")%</strong>
+                            <div class="health-bar"><i style="width:@Model.Health_Index.ToString("0", invariant)%"></i></div>
+                        </div>
+                        <div class="health-score">
+                            <span>Deqradasiya</span>
+                            <strong>@Model.DegradationPercent.ToString("0.0")%</strong>
+                            <div class="health-bar danger"><i style="width:@Model.DegradationPercent.ToString("0", invariant)%"></i></div>
+                        </div>
+                        <div class="zone-legend">
+                            <span><i class="zone danger"></i>0-200 Təhlükəli</span>
+                            <span><i class="zone warning"></i>200-500 Xəbərdarlıq</span>
+                            <span><i class="zone optimal"></i>500+ Optimal</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="sensor-matrix">
+                <article class="sensor-card">
+                    <span>Cərəyan</span>
+                    <strong>@Model.Current_A.ToString("0.0") A</strong>
+                    <canvas id="currentSpark"></canvas>
+                </article>
+                <article class="sensor-card">
+                    <span>Vibrasiya</span>
+                    <strong>@Model.Vibration_RMS.ToString("0.00") mm/s</strong>
+                    <canvas id="vibrationSpark"></canvas>
+                </article>
+                <article class="sensor-card">
+                    <span>Temperatur</span>
+                    <strong>@Model.Temperature_C.ToString("0.0") C</strong>
+                    <canvas id="temperatureSpark"></canvas>
+                </article>
+                <article class="sensor-card">
+                    <span>Təzyiq</span>
+                    <strong>@Model.Pressure_PSI.ToString("0.0") PSI</strong>
+                    <canvas id="pressureSpark"></canvas>
+                </article>
+            </section>
+
+            <section class="lab-panel">
+                <div class="section-title">
+                    <div>
+                        <span>Sensor birləşməsi</span>
+                        <h2>Canlı diaqnostika qrafiki</h2>
+                    </div>
+                    <strong>Çoxoxlu telemetriya</strong>
+                </div>
+                <canvas id="diagnosticsChart"></canvas>
+                <div class="chart-note">Qırmızı kəsik xətt ISO 10816 üzrə təhlükəli vibrasiya zonasını göstərir.</div>
+            </section>
+
+            <section class="lower-grid">
+                <article class="lab-panel">
+                    <div class="section-title">
+                        <div>
+                            <span>Nasazlıq imzası</span>
+                            <h2>FFT harmonik pikləri</h2>
+                        </div>
+                        <strong>@Model.FaultLabel</strong>
+                    </div>
+                    <canvas id="faultSignatureChart"></canvas>
+                </article>
+
+                <article class="lab-panel">
+                    <div class="section-title">
+                        <div>
+                            <span>P-F əyrisinin vizuallaşdırılması</span>
+                            <h2>Deqradasiya mövqeyi</h2>
+                        </div>
+                        <strong>@Model.DegradationPercent.ToString("0")% istifadə olunub</strong>
+                    </div>
+                    <canvas id="pfCurveChart"></canvas>
+                </article>
+            </section>
+        </main>
+
+        <aside class="side-column">
+            <form method="get" class="lab-panel input-panel">
+                <div class="section-title compact">
+                    <div>
+                        <span>Giriş vektoru</span>
+                        <h2>Sensor simulyatoru</h2>
+                    </div>
+                </div>
+
+                <label><span>Dövr</span><input type="number" step="1" name="Cycle" value="@Model.Cycle.ToString("0", invariant)" /></label>
+                <label><span>Cərəyan, A</span><input type="number" step="0.1" name="Current_A" value="@Model.Current_A.ToString("0.0", invariant)" /></label>
+                <label><span>Vibrasiya RMS</span><input type="number" step="0.01" name="Vibration_RMS" value="@Model.Vibration_RMS.ToString("0.00", invariant)" /></label>
+                <label><span>Temperatur, C</span><input type="number" step="0.1" name="Temperature_C" value="@Model.Temperature_C.ToString("0.0", invariant)" /></label>
+                <label><span>Təzyiq, PSI</span><input type="number" step="0.1" name="Pressure_PSI" value="@Model.Pressure_PSI.ToString("0.0", invariant)" /></label>
+                <label><span>Sağlamlıq indeksi</span><input type="number" step="1" name="Health_Index" value="@Model.Health_Index.ToString("0", invariant)" /></label>
+
+                <button type="submit">Proqnozu yenilə</button>
+            </form>
+
+            <section class="lab-panel advisory-panel">
+                <div class="section-title compact">
+                    <div>
+                        <span>Texniki xidmət tövsiyəsi</span>
+                        <h2>İcra əmri</h2>
+                    </div>
+                </div>
+                <div class="command-box @Model.RiskClass">
+                    <strong>@Model.MaintenanceCommand</strong>
+                    <p>@Model.Recommendation</p>
+                </div>
+            </section>
+
+            @* ── NASAZLIQ VƏZİYYƏTİ (C# CS0029 xətası burada həll edildi) ── *@
+            <section class="lab-panel fault-panel">
+                <div class="section-title compact">
+                    <div>
+                        <span>Komponent diaqnostikası</span>
+                        <h2>Nasazlıq vəziyyəti</h2>
+                    </div>
+                </div>
+                <div class="fault-chip-row">
+                    @* Burada int və ya string dəyərlər birbaşa şərt kimi deyil, "== 1" və ya "== Aktiv" şəklində yoxlanılır *@
+                    <span class="fault-chip @(Model.BearingFault == 1 ? "fault-crit" : "fault-ok")" id="chipBearing">
+                        Yataq @(Model.BearingFault == 1 ? "✗" : "✓")
+                    </span>
+                    <span class="fault-chip @(Model.StatorFault == 1 ? "fault-crit" : "fault-ok")" id="chipStator">
+                        Stator @(Model.StatorFault == 1 ? "✗" : "✓")
+                    </span>
+                    <span class="fault-chip @(Model.RotorFault == 1 ? "fault-crit" : "fault-ok")" id="chipRotor">
+                        Rotor @(Model.RotorFault == 1 ? "✗" : "✓")
+                    </span>
+                    <span class="fault-chip @(Model.AnomalyState == "Active" || Model.AnomalyState == "True" ? "fault-warn" : "fault-ok")" id="chipAnomaly">
+                        Anomaliya @(Model.AnomalyState == "Active" || Model.AnomalyState == "True" ? "⚠" : "—")
+                    </span>
+                </div>
+            </section>
+
+            <section class="lab-panel log-panel">
+                <div class="section-title compact">
+                    <div>
+                        <span>Texniki jurnallar</span>
+                        <h2>ML mühərrik proqnozları</h2>
+                    </div>
+                </div>
+                <div id="predictionLogs" class="prediction-logs" aria-live="polite">
+                    <div><time>@now.Substring(11)</time><span>Etibarlılıq göstəricisi: @Model.ConfidenceScore.ToString("0.0")%</span></div>
+                    <div><time>@now.Substring(11)</time><span>Anomaliya Tespiti: @Model.AnomalyState</span></div>
+                </div>
+            </section>
+        </aside>
+    </div>
+</section>
+
+@section Scripts {
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const toggleBtn = document.getElementById("themeToggleBtn");
+            const shell = document.getElementById("diagnosticShell");
+
+            // Əvvəlki seçimi yaddaşdan (localStorage) yoxlayır
+            if (localStorage.getItem("dashboard-theme") === "light") {
+                shell.classList.add("light-mode");
+            }
+
+            // Düyməyə basıldıqda rejimi dəyişdirir və yadda saxlayır
+            toggleBtn.addEventListener("click", function () {
+                shell.classList.toggle("light-mode");
+
+                if (shell.classList.contains("light-mode")) {
+                    localStorage.setItem("dashboard-theme", "light");
+                } else {
+                    localStorage.setItem("dashboard-theme", "dark");
+                }
+            });
+        });
+    </script>
+}

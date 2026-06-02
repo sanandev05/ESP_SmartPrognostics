@@ -1,0 +1,916 @@
+<!doctype html>
+<html lang="az">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ESP Ağıllı Monitorinq Sistemi</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #0B0E14;
+      --panel: #161B22;
+      --panel-2: #111820;
+      --text: #E6EDF3;
+      --muted: #8B949E;
+      --line: rgba(88, 166, 255, .24);
+      --healthy: #238636;
+      --warning: #D29922;
+      --danger: #F85149;
+      --info: #58A6FF;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      color: var(--text);
+      background:
+        linear-gradient(rgba(88, 166, 255, .025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(88, 166, 255, .025) 1px, transparent 1px),
+        radial-gradient(circle at 50% -10%, rgba(88, 166, 255, .12), transparent 34rem),
+        var(--bg);
+      background-size: 38px 38px, 38px 38px, auto, auto;
+      font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      letter-spacing: 0;
+      overflow-x: hidden;
+    }
+
+    .control-shell {
+      min-height: 100vh;
+      padding: 18px;
+    }
+
+    .industrial-nav,
+    .scada-card {
+      background: linear-gradient(180deg, rgba(22, 27, 34, .98), rgba(13, 17, 23, .98));
+      border: 1px solid var(--line);
+      box-shadow: 0 0 0 1px rgba(88, 166, 255, .05), 0 16px 38px rgba(0, 0, 0, .36), inset 0 1px 0 rgba(230, 237, 243, .04);
+    }
+
+    .industrial-nav {
+      min-height: 72px;
+      border-radius: 8px;
+      padding: 14px 18px;
+    }
+
+    .brand-mark {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      color: var(--info);
+      background: rgba(88, 166, 255, .11);
+      border: 1px solid rgba(88, 166, 255, .34);
+      border-radius: 8px;
+      box-shadow: 0 0 18px rgba(88, 166, 255, .18);
+    }
+
+    .system-title {
+      margin: 0;
+      font-size: clamp(1.15rem, 2vw, 1.8rem);
+      font-weight: 750;
+      letter-spacing: .2px;
+    }
+
+    .meta-strip {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(145px, 1fr));
+      gap: 10px;
+      width: min(620px, 100%);
+    }
+
+    .meta-item {
+      min-height: 44px;
+      padding: 8px 10px;
+      background: rgba(13, 17, 23, .75);
+      border: 1px solid rgba(139, 148, 158, .18);
+      border-radius: 6px;
+    }
+
+    .meta-label,
+    .section-kicker,
+    .sensor-label,
+    .metric-label {
+      color: var(--muted);
+      font-size: .72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .meta-value {
+      margin-top: 1px;
+      color: var(--text);
+      font-size: .9rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: minmax(260px, .85fr) minmax(430px, 1.65fr) minmax(260px, .9fr);
+      gap: 16px;
+      margin-top: 16px;
+      align-items: stretch;
+    }
+
+    .panel-stack {
+      display: grid;
+      gap: 16px;
+      align-content: start;
+    }
+
+    .scada-card {
+      position: relative;
+      border-radius: 8px;
+      padding: 16px;
+      overflow: hidden;
+    }
+
+    .scada-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      border-top: 1px solid rgba(230, 237, 243, .06);
+      background: linear-gradient(90deg, transparent, rgba(88, 166, 255, .055), transparent);
+      opacity: .8;
+    }
+
+    .card-head {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .card-title {
+      margin: 0;
+      font-size: .95rem;
+      font-weight: 750;
+      letter-spacing: .2px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 28px;
+      padding: 5px 9px;
+      border-radius: 999px;
+      border: 1px solid rgba(88, 166, 255, .25);
+      background: rgba(88, 166, 255, .08);
+      color: var(--info);
+      font-size: .74rem;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--healthy);
+      box-shadow: 0 0 12px var(--healthy);
+    }
+
+    .health-ring {
+      width: min(190px, 72vw);
+      aspect-ratio: 1;
+      margin: 4px auto 18px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at center, #161B22 0 56%, transparent 57%),
+        conic-gradient(var(--healthy) calc(var(--health) * 1%), rgba(48, 54, 61, .85) 0);
+      box-shadow: 0 0 28px rgba(35, 134, 54, .2), inset 0 0 35px rgba(0, 0, 0, .36);
+    }
+
+    .health-core {
+      width: 69%;
+      aspect-ratio: 1;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: linear-gradient(180deg, #111820, #0B0E14);
+      border: 1px solid rgba(230, 237, 243, .08);
+    }
+
+    .health-value {
+      font-size: 2.7rem;
+      font-weight: 850;
+      line-height: 1;
+    }
+
+    .health-unit {
+      color: var(--muted);
+      font-size: .74rem;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .status-block {
+      display: grid;
+      gap: 10px;
+    }
+
+    .metric-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px;
+      border: 1px solid rgba(139, 148, 158, .16);
+      border-radius: 7px;
+      background: rgba(13, 17, 23, .62);
+    }
+
+    .metric-value {
+      font-size: 1rem;
+      font-weight: 800;
+      text-align: right;
+    }
+
+    .ai-box {
+      min-height: 126px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      border-color: rgba(35, 134, 54, .38);
+      background:
+        linear-gradient(145deg, rgba(35, 134, 54, .14), rgba(22, 27, 34, .88) 46%),
+        rgba(22, 27, 34, .94);
+    }
+
+    .recommendation {
+      position: relative;
+      z-index: 1;
+      margin: 0;
+      font-size: 1.02rem;
+      font-weight: 750;
+      line-height: 1.36;
+    }
+
+    .confidence {
+      color: var(--muted);
+      font-size: .76rem;
+      font-weight: 700;
+    }
+
+    .gauge-card {
+      min-height: 440px;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+    }
+
+    .gauge-wrap {
+      position: relative;
+      min-height: 280px;
+    }
+
+    .gauge-wrap canvas,
+    .trend-wrap canvas {
+      width: 100% !important;
+      height: 100% !important;
+    }
+
+    .gauge-scale {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: -12px;
+    }
+
+    .zone {
+      padding: 9px 10px;
+      border-radius: 6px;
+      background: rgba(13, 17, 23, .72);
+      border: 1px solid rgba(139, 148, 158, .16);
+      color: var(--muted);
+      font-size: .75rem;
+      font-weight: 750;
+      text-align: center;
+    }
+
+    .zone strong {
+      display: block;
+      margin-bottom: 2px;
+      color: var(--text);
+      font-size: .82rem;
+    }
+
+    .zone-danger { border-color: rgba(248, 81, 73, .42); }
+    .zone-warning { border-color: rgba(210, 153, 34, .44); }
+    .zone-healthy { border-color: rgba(35, 134, 54, .46); }
+
+    .trend-card {
+      min-height: 338px;
+    }
+
+    .trend-wrap {
+      height: 260px;
+      position: relative;
+    }
+
+    .sensor-grid {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sensor-card {
+      min-height: 116px;
+      padding: 14px;
+      border-radius: 8px;
+      border: 1px solid rgba(139, 148, 158, .17);
+      background: linear-gradient(180deg, rgba(17, 24, 32, .95), rgba(13, 17, 23, .94));
+      box-shadow: inset 0 1px 0 rgba(230, 237, 243, .04);
+    }
+
+    .sensor-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .sensor-icon {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border-radius: 8px;
+      background: rgba(88, 166, 255, .11);
+      color: var(--info);
+      border: 1px solid rgba(88, 166, 255, .22);
+    }
+
+    .sensor-value {
+      display: flex;
+      align-items: baseline;
+      gap: 7px;
+      color: var(--text);
+      font-size: 2rem;
+      font-weight: 850;
+      line-height: 1;
+    }
+
+    .sensor-unit {
+      color: var(--muted);
+      font-size: .86rem;
+      font-weight: 750;
+    }
+
+    .mini-bar {
+      height: 5px;
+      margin-top: 13px;
+      border-radius: 999px;
+      background: rgba(48, 54, 61, .9);
+      overflow: hidden;
+    }
+
+    .mini-bar span {
+      display: block;
+      height: 100%;
+      width: 50%;
+      border-radius: inherit;
+      background: var(--info);
+      box-shadow: 0 0 12px currentColor;
+      transition: width .4s ease, background .4s ease;
+    }
+
+    .healthy { color: var(--healthy) !important; }
+    .warning { color: var(--warning) !important; }
+    .danger { color: var(--danger) !important; }
+    .info { color: var(--info) !important; }
+
+    @media (max-width: 1180px) {
+      .dashboard-grid {
+        grid-template-columns: 1fr 1.45fr;
+      }
+      .right-panel {
+        grid-column: 1 / -1;
+      }
+      .sensor-grid {
+        grid-template-columns: repeat(4, minmax(150px, 1fr));
+      }
+    }
+
+    @media (max-width: 860px) {
+      .control-shell { padding: 12px; }
+      .industrial-nav { align-items: flex-start !important; }
+      .meta-strip,
+      .dashboard-grid,
+      .sensor-grid {
+        grid-template-columns: 1fr;
+      }
+      .gauge-card { min-height: 380px; }
+      .gauge-wrap { min-height: 230px; }
+      .trend-wrap { height: 230px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="control-shell">
+    <nav class="industrial-nav d-flex flex-wrap align-items-center justify-content-between gap-3">
+      <div class="d-flex align-items-center gap-3">
+        <div class="brand-mark"><i class="fa-solid fa-oil-well"></i></div>
+        <div>
+          <p class="section-kicker mb-1">Sənaye Nəzarət Paneli</p>
+          <h1 class="system-title">ESP Ağıllı Monitorinq Sistemi</h1>
+        </div>
+      </div>
+      <div class="meta-strip">
+        <div class="meta-item">
+          <div class="meta-label">Cari tarix və saat</div>
+          <div class="meta-value" id="dateTime">--</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-label">Mühərrik ID</div>
+          <div class="meta-value">ESP-001</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-label">Model tipi</div>
+          <div class="meta-value">FastTreeRegression</div>
+        </div>
+      </div>
+    </nav>
+
+    <section class="dashboard-grid">
+      <aside class="panel-stack">
+        <article class="scada-card">
+          <div class="card-head">
+            <div>
+              <div class="section-kicker">Health Index</div>
+              <h2 class="card-title">Sistem Vəziyyəti</h2>
+            </div>
+            <span class="chip"><span class="status-dot" id="healthDot"></span> Aktiv</span>
+          </div>
+          <div class="health-ring" id="healthRing" style="--health: 95">
+            <div class="health-core">
+              <div class="text-center">
+                <div class="health-value" id="healthValue">95%</div>
+                <div class="health-unit">Sağlamlıq</div>
+              </div>
+            </div>
+          </div>
+          <div class="status-block">
+            <div class="metric-row">
+              <div>
+                <div class="metric-label">Anomaliya Təsbiti</div>
+                <div class="confidence">AI klassifikasiya çıxışı</div>
+              </div>
+              <div class="metric-value healthy" id="anomalyStatus">Stabil</div>
+            </div>
+            <div class="metric-row">
+              <div>
+                <div class="metric-label">Risk səviyyəsi</div>
+                <div class="confidence">Canlı sensorlardan hesablanır</div>
+              </div>
+              <div class="metric-value healthy" id="riskLevel">Aşağı</div>
+            </div>
+          </div>
+        </article>
+
+        <article class="scada-card ai-box" id="recommendationCard">
+          <div class="card-head mb-2">
+            <div>
+              <div class="section-kicker">Preskriptiv Analitika</div>
+              <h2 class="card-title">Süni İntellekt Tövsiyəsi</h2>
+            </div>
+            <span class="chip"><i class="fa-solid fa-brain"></i> AI</span>
+          </div>
+          <p class="recommendation" id="aiRecommendation">Mühərrik stabil işləyir. Cari rejimi saxlayın.</p>
+          <div class="confidence" id="confidenceText">Etibarlılıq: 96%</div>
+        </article>
+      </aside>
+
+      <section class="panel-stack">
+        <article class="scada-card gauge-card">
+          <div class="card-head">
+            <div>
+              <div class="section-kicker">Qalıq Faydalı Ömür</div>
+              <h2 class="card-title">RUL Proqnoz Göstəricisi</h2>
+            </div>
+            <span class="chip"><i class="fa-solid fa-gauge-high"></i> 0-1500 saat</span>
+          </div>
+          <div class="gauge-wrap">
+            <canvas id="rulGauge" aria-label="Qalıq Faydalı Ömür qrafiki"></canvas>
+          </div>
+          <div class="gauge-scale">
+            <div class="zone zone-danger"><strong>Kritik</strong>0-200 saat</div>
+            <div class="zone zone-warning"><strong>Xəbərdarlıq</strong>200-500 saat</div>
+            <div class="zone zone-healthy"><strong>Optimal</strong>500-1500 saat</div>
+          </div>
+        </article>
+
+        <article class="scada-card trend-card">
+          <div class="card-head">
+            <div>
+              <div class="section-kicker">Telemetriya Axını</div>
+              <h2 class="card-title">Canlı Sensor Trendləri</h2>
+            </div>
+            <span class="chip"><i class="fa-solid fa-wave-square"></i> 1 san</span>
+          </div>
+          <div class="trend-wrap">
+            <canvas id="trendChart" aria-label="Canlı sensor trendləri"></canvas>
+          </div>
+        </article>
+      </section>
+
+      <aside class="panel-stack right-panel">
+        <article class="scada-card">
+          <div class="card-head">
+            <div>
+              <div class="section-kicker">Canlı Sensorlar</div>
+              <h2 class="card-title">Real Vaxt Ölçmələri</h2>
+            </div>
+            <span class="chip"><span class="status-dot"></span> Online</span>
+          </div>
+
+          <div class="sensor-grid">
+            <div class="sensor-card">
+              <div class="sensor-top">
+                <div>
+                  <div class="sensor-label">Cərəyan</div>
+                  <div class="confidence">Motor fazası</div>
+                </div>
+                <div class="sensor-icon"><i class="fa-solid fa-bolt"></i></div>
+              </div>
+              <div class="sensor-value"><span id="currentValue">48.6</span><span class="sensor-unit">A</span></div>
+              <div class="mini-bar"><span id="currentBar"></span></div>
+            </div>
+
+            <div class="sensor-card">
+              <div class="sensor-top">
+                <div>
+                  <div class="sensor-label">Vibrasiya</div>
+                  <div class="confidence">RMS səviyyəsi</div>
+                </div>
+                <div class="sensor-icon"><i class="fa-solid fa-chart-line"></i></div>
+              </div>
+              <div class="sensor-value"><span id="vibrationValue">2.8</span><span class="sensor-unit">mm/s</span></div>
+              <div class="mini-bar"><span id="vibrationBar"></span></div>
+            </div>
+
+            <div class="sensor-card">
+              <div class="sensor-top">
+                <div>
+                  <div class="sensor-label">Temperatur</div>
+                  <div class="confidence">Mühərrik korpusu</div>
+                </div>
+                <div class="sensor-icon"><i class="fa-solid fa-temperature-half"></i></div>
+              </div>
+              <div class="sensor-value"><span id="temperatureValue">74</span><span class="sensor-unit">°C</span></div>
+              <div class="mini-bar"><span id="temperatureBar"></span></div>
+            </div>
+
+            <div class="sensor-card">
+              <div class="sensor-top">
+                <div>
+                  <div class="sensor-label">Təzyiq</div>
+                  <div class="confidence">Nasos çıxışı</div>
+                </div>
+                <div class="sensor-icon"><i class="fa-solid fa-compress"></i></div>
+              </div>
+              <div class="sensor-value"><span id="pressureValue">2180</span><span class="sensor-unit">PSI</span></div>
+              <div class="mini-bar"><span id="pressureBar"></span></div>
+            </div>
+          </div>
+        </article>
+      </aside>
+    </section>
+  </main>
+
+  <script>
+    const MAX_RUL = 1500;
+    const state = {
+      rul: 797,
+      health: 95,
+      current: 48.6,
+      vibration: 2.8,
+      temperature: 74,
+      pressure: 2180,
+      tick: 0
+    };
+
+    const css = getComputedStyle(document.documentElement);
+    const colors = {
+      bg: css.getPropertyValue("--bg").trim(),
+      panel: css.getPropertyValue("--panel").trim(),
+      text: css.getPropertyValue("--text").trim(),
+      muted: css.getPropertyValue("--muted").trim(),
+      healthy: css.getPropertyValue("--healthy").trim(),
+      warning: css.getPropertyValue("--warning").trim(),
+      danger: css.getPropertyValue("--danger").trim(),
+      info: css.getPropertyValue("--info").trim()
+    };
+
+    const gaugePlugin = {
+      id: "gaugeCenter",
+      afterDatasetsDraw(chart) {
+        const { ctx, chartArea } = chart;
+        if (!chartArea) return;
+        const meta = chart.getDatasetMeta(0);
+        const arc = meta.data[0];
+        if (!arc) return;
+
+        const x = arc.x;
+        const y = arc.y;
+        const radius = arc.outerRadius * 0.86;
+        const valueRatio = Math.max(0, Math.min(1, state.rul / MAX_RUL));
+        const angle = Math.PI + valueRatio * Math.PI;
+        const needleX = x + Math.cos(angle) * radius;
+        const needleY = y + Math.sin(angle) * radius;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(needleX, needleY);
+        ctx.lineWidth = 4;
+        ctx.lineCap = "round";
+        ctx.strokeStyle = colors.text;
+        ctx.shadowColor = "rgba(230, 237, 243, .45)";
+        ctx.shadowBlur = 10;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(x, y, 8, 0, Math.PI * 2);
+        ctx.fillStyle = colors.text;
+        ctx.fill();
+
+        ctx.textAlign = "center";
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = colors.text;
+        ctx.font = "800 34px Segoe UI, sans-serif";
+        ctx.fillText(`${Math.round(state.rul)} saat`, x, y - 36);
+        ctx.fillStyle = colors.muted;
+        ctx.font = "700 12px Segoe UI, sans-serif";
+        ctx.fillText("Qalıq Faydalı Ömür (RUL)", x, y - 12);
+        ctx.fillText("0", x - arc.outerRadius + 8, y + 22);
+        ctx.fillText("1500", x + arc.outerRadius - 18, y + 22);
+        ctx.restore();
+      }
+    };
+
+    Chart.register(gaugePlugin);
+
+    const commonGrid = {
+      color: "rgba(139, 148, 158, .14)",
+      drawBorder: false
+    };
+
+    const rulGauge = new Chart(document.getElementById("rulGauge"), {
+      type: "doughnut",
+      data: {
+        labels: ["Kritik", "Xəbərdarlıq", "Optimal"],
+        datasets: [{
+          data: [200, 300, 1000],
+          backgroundColor: [colors.danger, colors.warning, colors.healthy],
+          borderColor: ["rgba(248,81,73,.55)", "rgba(210,153,34,.55)", "rgba(35,134,54,.55)"],
+          borderWidth: 2,
+          hoverOffset: 0,
+          circumference: 180,
+          rotation: 270,
+          cutout: "70%"
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: { duration: 420 },
+        plugins: {
+          legend: { display: false },
+          tooltip: { enabled: false }
+        }
+      }
+    });
+
+    const labels = Array.from({ length: 24 }, (_, i) => `${String(i + 1).padStart(2, "0")}s`);
+    const vibrationData = Array.from({ length: 24 }, () => 2.6 + Math.random() * .5);
+    const temperatureData = Array.from({ length: 24 }, () => 72 + Math.random() * 4);
+
+    const trendChart = new Chart(document.getElementById("trendChart"), {
+      type: "line",
+      data: {
+        labels,
+        datasets: [
+          {
+            label: "Vibrasiya (mm/s)",
+            data: vibrationData,
+            yAxisID: "yVibration",
+            borderColor: colors.info,
+            backgroundColor: "rgba(88, 166, 255, .15)",
+            borderWidth: 2.5,
+            pointRadius: 0,
+            tension: .36,
+            fill: true
+          },
+          {
+            label: "Temperatur (°C)",
+            data: temperatureData,
+            yAxisID: "yTemperature",
+            borderColor: "#F0883E",
+            backgroundColor: "rgba(240, 136, 62, .11)",
+            borderWidth: 2.5,
+            pointRadius: 0,
+            tension: .36,
+            fill: false
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: "index", intersect: false },
+        plugins: {
+          legend: {
+            labels: {
+              color: colors.text,
+              boxWidth: 12,
+              boxHeight: 12,
+              usePointStyle: true,
+              font: { weight: 700 }
+            }
+          },
+          tooltip: {
+            backgroundColor: "#0D1117",
+            borderColor: "rgba(88, 166, 255, .32)",
+            borderWidth: 1,
+            titleColor: colors.text,
+            bodyColor: colors.text
+          }
+        },
+        scales: {
+          x: {
+            grid: commonGrid,
+            ticks: { color: colors.muted, maxTicksLimit: 8 }
+          },
+          yVibration: {
+            position: "left",
+            min: 0,
+            max: 8,
+            grid: commonGrid,
+            title: { display: true, text: "Vibrasiya (mm/s)", color: colors.info, font: { weight: 800 } },
+            ticks: { color: colors.muted }
+          },
+          yTemperature: {
+            position: "right",
+            min: 40,
+            max: 120,
+            grid: { drawOnChartArea: false, drawBorder: false },
+            title: { display: true, text: "Temperatur (°C)", color: "#F0883E", font: { weight: 800 } },
+            ticks: { color: colors.muted }
+          }
+        }
+      }
+    });
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function randomWalk(value, change, min, max) {
+      return clamp(value + (Math.random() - .5) * change, min, max);
+    }
+
+    function setText(id, text) {
+      document.getElementById(id).textContent = text;
+    }
+
+    function setBar(id, percent, color) {
+      const el = document.getElementById(id);
+      el.style.width = `${clamp(percent, 4, 100)}%`;
+      el.style.background = color;
+      el.style.color = color;
+    }
+
+    function statusColorForHealth(health) {
+      if (health < 60) return colors.danger;
+      if (health < 82) return colors.warning;
+      return colors.healthy;
+    }
+
+    function updateDateTime() {
+      const now = new Date();
+      setText("dateTime", now.toLocaleString("az-AZ", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit"
+      }));
+    }
+
+    function updateStatus() {
+      const riskScore =
+        (state.vibration > 5.2 ? 34 : state.vibration > 3.8 ? 17 : 3) +
+        (state.temperature > 92 ? 28 : state.temperature > 84 ? 13 : 2) +
+        (state.current > 62 ? 19 : state.current > 56 ? 8 : 1) +
+        (state.rul < 260 ? 30 : state.rul < 520 ? 14 : 2);
+
+      state.health = clamp(Math.round(100 - riskScore + Math.random() * 3), 42, 98);
+      const statusColor = statusColorForHealth(state.health);
+      const ring = document.getElementById("healthRing");
+      ring.style.setProperty("--health", state.health);
+      ring.style.boxShadow = `0 0 28px ${statusColor}33, inset 0 0 35px rgba(0,0,0,.36)`;
+      document.getElementById("healthDot").style.background = statusColor;
+      document.getElementById("healthDot").style.boxShadow = `0 0 12px ${statusColor}`;
+      setText("healthValue", `${state.health}%`);
+
+      const anomaly = document.getElementById("anomalyStatus");
+      const risk = document.getElementById("riskLevel");
+      const ai = document.getElementById("aiRecommendation");
+      const card = document.getElementById("recommendationCard");
+
+      anomaly.className = "metric-value";
+      risk.className = "metric-value";
+
+      if (state.health < 60) {
+        anomaly.textContent = "Təhlükə";
+        risk.textContent = "Kritik";
+        anomaly.classList.add("danger");
+        risk.classList.add("danger");
+        ai.textContent = "Vibrasiya və temperatur kritik həddə yaxınlaşır. Yükü azaldın və texniki yoxlama başladın.";
+        card.style.borderColor = "rgba(248, 81, 73, .44)";
+        card.style.background = "linear-gradient(145deg, rgba(248,81,73,.15), rgba(22,27,34,.9) 46%), rgba(22,27,34,.94)";
+      } else if (state.health < 82) {
+        anomaly.textContent = "Xəbərdarlıq";
+        risk.textContent = "Orta";
+        anomaly.classList.add("warning");
+        risk.classList.add("warning");
+        ai.textContent = "Sensor göstəricilərində artım var. Soyutma və nasos təzyiqini nəzarətdə saxlayın.";
+        card.style.borderColor = "rgba(210, 153, 34, .44)";
+        card.style.background = "linear-gradient(145deg, rgba(210,153,34,.14), rgba(22,27,34,.9) 46%), rgba(22,27,34,.94)";
+      } else {
+        anomaly.textContent = "Stabil";
+        risk.textContent = "Aşağı";
+        anomaly.classList.add("healthy");
+        risk.classList.add("healthy");
+        ai.textContent = "Mühərrik stabil işləyir. Cari rejimi saxlayın.";
+        card.style.borderColor = "rgba(35, 134, 54, .38)";
+        card.style.background = "linear-gradient(145deg, rgba(35,134,54,.14), rgba(22,27,34,.88) 46%), rgba(22,27,34,.94)";
+      }
+
+      setText("confidenceText", `Etibarlılıq: ${clamp(91 + Math.round(Math.random() * 7), 91, 98)}%`);
+    }
+
+    function updateSensors() {
+      state.tick += 1;
+      const drift = Math.sin(state.tick / 9) * .22;
+
+      state.current = randomWalk(state.current + drift, 1.5, 42, 66);
+      state.vibration = randomWalk(state.vibration, .55, 1.6, 6.6);
+      state.temperature = randomWalk(state.temperature + state.vibration * .015, 1.25, 64, 98);
+      state.pressure = randomWalk(state.pressure, 46, 1840, 2460);
+
+      if (Math.random() > .93) state.vibration = clamp(state.vibration + Math.random() * 1.4, 1.6, 6.9);
+      if (Math.random() > .95) state.temperature = clamp(state.temperature + Math.random() * 4.5, 64, 104);
+
+      const rulDrop = state.vibration > 5 || state.temperature > 91 ? 8 : state.vibration > 4 ? 4 : 1.4;
+      state.rul = clamp(state.rul - Math.random() * rulDrop + (Math.random() > .82 ? 3 : 0), 80, MAX_RUL);
+
+      setText("currentValue", state.current.toFixed(1));
+      setText("vibrationValue", state.vibration.toFixed(1));
+      setText("temperatureValue", Math.round(state.temperature));
+      setText("pressureValue", Math.round(state.pressure));
+
+      setBar("currentBar", ((state.current - 35) / 35) * 100, state.current > 62 ? colors.danger : state.current > 56 ? colors.warning : colors.info);
+      setBar("vibrationBar", (state.vibration / 7) * 100, state.vibration > 5.2 ? colors.danger : state.vibration > 3.8 ? colors.warning : colors.info);
+      setBar("temperatureBar", ((state.temperature - 40) / 75) * 100, state.temperature > 92 ? colors.danger : state.temperature > 84 ? colors.warning : colors.info);
+      setBar("pressureBar", ((state.pressure - 1600) / 1050) * 100, state.pressure > 2380 || state.pressure < 1900 ? colors.warning : colors.info);
+    }
+
+    function updateCharts() {
+      const nextLabel = `${String(state.tick).padStart(2, "0")}s`;
+      trendChart.data.labels.push(nextLabel);
+      trendChart.data.labels.shift();
+      trendChart.data.datasets[0].data.push(Number(state.vibration.toFixed(2)));
+      trendChart.data.datasets[0].data.shift();
+      trendChart.data.datasets[1].data.push(Number(state.temperature.toFixed(1)));
+      trendChart.data.datasets[1].data.shift();
+      trendChart.update("none");
+      rulGauge.update();
+    }
+
+    function stream() {
+      updateDateTime();
+      updateSensors();
+      updateStatus();
+      updateCharts();
+    }
+
+    updateDateTime();
+    updateStatus();
+    rulGauge.update();
+    setInterval(stream, 1000);
+  </script>
+</body>
+</html>
