@@ -8,14 +8,14 @@ using System.Threading.Tasks;
 using Microsoft.ML;
 using Microsoft.ML.Data;
 using Microsoft.ML.Trainers;
-using Microsoft.ML.Trainers.FastTree;
+using Microsoft.ML.Trainers.LightGbm;
 using Microsoft.ML.Transforms;
 
 namespace ESP_SmartPrognostics
 {
     public partial class MLModel
     {
-        public const string RetrainFilePath =  @"C:\Users\Icomp\Desktop\Diplom isi\esp_monitoring_dataset.csv";
+        public const string RetrainFilePath =  @"C:\Users\Icomp\Desktop\Diplom isi\ESP_001_REDA_562_Realistic_Dataset (2).csv";
         public const char RetrainSeparatorChar = ',';
         public const bool RetrainHasHeader =  true;
         public const bool RetrainAllowQuoting =  false;
@@ -91,10 +91,11 @@ namespace ESP_SmartPrognostics
         public static IEstimator<ITransformer> BuildPipeline(MLContext mlContext)
         {
             // Data process configuration with pipeline data transformations
-            var pipeline = mlContext.Transforms.Categorical.OneHotEncoding(@"Motor_ID", @"Motor_ID", outputKind: OneHotEncodingEstimator.OutputKind.Indicator)      
-                                    .Append(mlContext.Transforms.ReplaceMissingValues(new []{new InputOutputColumnPair(@"Cycle", @"Cycle"),new InputOutputColumnPair(@"Current_A", @"Current_A"),new InputOutputColumnPair(@"Vibration_RMS", @"Vibration_RMS"),new InputOutputColumnPair(@"Temperature_C", @"Temperature_C"),new InputOutputColumnPair(@"Pressure_PSI", @"Pressure_PSI"),new InputOutputColumnPair(@"Health_Index", @"Health_Index")}))      
-                                    .Append(mlContext.Transforms.Concatenate(@"Features", new []{@"Motor_ID",@"Cycle",@"Current_A",@"Vibration_RMS",@"Temperature_C",@"Pressure_PSI",@"Health_Index"}))      
-                                    .Append(mlContext.Regression.Trainers.FastTree(new FastTreeRegressionTrainer.Options(){NumberOfLeaves=6,MinimumExampleCountPerLeaf=22,NumberOfTrees=4,MaximumBinCountPerFeature=221,FeatureFraction=0.99999999,LearningRate=0.9999997766729865,LabelColumnName=@"Remaining_Life",FeatureColumnName=@"Features",DiskTranspose=false}));
+            var pipeline = mlContext.Transforms.Categorical.OneHotEncoding(new []{new InputOutputColumnPair(@"Motor_ID", @"Motor_ID"),new InputOutputColumnPair(@"Motor_Model", @"Motor_Model"),new InputOutputColumnPair(@"Condition", @"Condition")}, outputKind: OneHotEncodingEstimator.OutputKind.Indicator)      
+                                    .Append(mlContext.Transforms.ReplaceMissingValues(new []{new InputOutputColumnPair(@"Operating_Hours", @"Operating_Hours"),new InputOutputColumnPair(@"Voltage_V", @"Voltage_V"),new InputOutputColumnPair(@"Current_A", @"Current_A"),new InputOutputColumnPair(@"Motor_Temperature_C", @"Motor_Temperature_C"),new InputOutputColumnPair(@"Vibration_g", @"Vibration_g"),new InputOutputColumnPair(@"Health_Index", @"Health_Index")}))      
+                                    .Append(mlContext.Transforms.Text.FeaturizeText(inputColumnName:@"Timestamp",outputColumnName:@"Timestamp"))      
+                                    .Append(mlContext.Transforms.Concatenate(@"Features", new []{@"Motor_ID",@"Motor_Model",@"Condition",@"Operating_Hours",@"Voltage_V",@"Current_A",@"Motor_Temperature_C",@"Vibration_g",@"Health_Index",@"Timestamp"}))      
+                                    .Append(mlContext.Regression.Trainers.LightGbm(new LightGbmRegressionTrainer.Options(){NumberOfLeaves=3180,NumberOfIterations=4,MinimumExampleCountPerLeaf=24,LearningRate=0.9999997766729865,LabelColumnName=@"Remaining_Life_hours",FeatureColumnName=@"Features",Booster=new GradientBooster.Options(){SubsampleFraction=0.9999997766729865,FeatureFraction=0.9651280347213184,L1Regularization=3.780446389874277E-10,L2Regularization=0.12034684070086137},MaximumBinCountPerFeature=208}));
 
             return pipeline;
         }

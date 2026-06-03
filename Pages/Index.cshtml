@@ -1,374 +1,471 @@
 @page
 @model IndexModel
 @{
-    ViewData["Title"] = "Mühərrik-01 Diaqnostika Mərkəzi";
+    ViewData["Title"] = "Dashboard";
 
-    var now = DateTime.Now.ToString("dd.MM.yyyy HH:mm:ss");
-
+    var now = DateTime.Now;
+    var nowStr = now.ToString("dd.MM.yyyy HH:mm:ss");
     var invariant = System.Globalization.CultureInfo.InvariantCulture;
+
+    // Sensor status determination
+    var voltageStatus = (Model.Voltage >= 360.0f && Model.Voltage <= 410.0f) ? "allowable" : (Model.Voltage >= 340.0f && Model.Voltage <= 430.0f) ? "warning" : "dangerous";
+    var currentStatus = Model.Current_A <= 13.0f ? "allowable" : Model.Current_A <= 16.0f ? "warning" : "dangerous";
+    var tempStatus = Model.Temperature_C <= 70.0f ? "allowable" : Model.Temperature_C <= 85.0f ? "warning" : "dangerous";
+    var vibStatus = Model.Vibration_RMS <= 2.8f ? "allowable" : Model.Vibration_RMS <= 4.5f ? "warning" : "dangerous";
+    // Count statuses
+    var statuses = new[] { voltageStatus, currentStatus, tempStatus, vibStatus };
+    int allowCount = statuses.Count(s => s == "allowable");
+    int warnCount = statuses.Count(s => s == "warning");
+    int dangerCount = statuses.Count(s => s == "dangerous");
+
+    // Overall system status
+    bool systemOk = dangerCount == 0;
+    string systemStatusClass = dangerCount > 0 ? "danger" : warnCount > 0 ? "warn" : "ok";
+    string systemStatusText = dangerCount > 0 ? "SİSTEM TƏHLÜKƏDƏ" : warnCount > 0 ? "SİSTEM NƏZARƏTDƏ" : "SİSTEM NORMALDİR";
+    string systemStatusDesc = dangerCount > 0
+        ? "Bəzi göstəricilər təhlükəli həddə çatıb. Dərhal müdaxilə tələb olunur."
+        : warnCount > 0
+            ? "Bəzi göstəricilər xəbərdarlıq zonasındadır. Nəzarət altında saxlayın."
+            : "Bütün göstəricilər icazə verilən hədlər daxilindədir.";
 }
 
-<style>
-    /* ── Tema Dəyişdirmə Düyməsi ── */
-    .theme-toggle-container {
-        margin-bottom: 15px;
-    }
-
-    .theme-toggle-btn {
-        background: rgba(255, 255, 255, 0.1);
-        color: #fff;
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        padding: 6px 12px;
-        border-radius: 20px;
-        cursor: pointer;
-        font-size: 0.9rem;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        transition: 0.3s;
-    }
-
-        .theme-toggle-btn:hover {
-            background: rgba(255, 255, 255, 0.2);
-        }
-
-    .icon-dark {
-        display: none;
-    }
-
-    /* ═════════════════════════════════════════════════════════════════════════
-           İŞIQLI REJİM (LIGHT MODE) TAM OVERRIDE
-           Bütün qaranlıq qalan hissələr bura daxil edildi
-        ═════════════════════════════════════════════════════════════════════════ */
-    .diagnostic-shell.light-mode {
-        background-color: #f4f6f9 !important;
-        color: #1e293b !important;
-    }
-
-        /* Əsas panellər və arxa planlar */
-        .diagnostic-shell.light-mode .lab-header,
-        .diagnostic-shell.light-mode .lab-panel,
-        .diagnostic-shell.light-mode .sensor-card,
-        .diagnostic-shell.light-mode .input-panel {
-            background-color: #ffffff !important;
-            border: 1px solid #e2e8f0 !important;
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05) !important;
-        }
-
-        /* Üst Başlıqdakı qutular (Vaxt möhürü, Proqnoz mühərriki və s.) */
-        .diagnostic-shell.light-mode .lab-header-grid div {
-            background-color: #f8fafc !important;
-            border: 1px solid #e2e8f0 !important;
-        }
-
-        /* Sağlamlıq və Deqradasiya Qutuları */
-        .diagnostic-shell.light-mode .health-score {
-            background-color: #f8fafc !important;
-            border: 1px solid #e2e8f0 !important;
-        }
-
-        .diagnostic-shell.light-mode .health-bar {
-            background-color: #e2e8f0 !important; /* Boş qalan hissənin rəngi açıq boz */
-        }
-
-        /* İcra Əmri (Command Box) - Şəkildə qaranlıq qalan hissə */
-        .diagnostic-shell.light-mode .command-box {
-            background-color: #f0fdf4 !important; /* Default açıq yaşıl */
-            border: 1px solid #bbf7d0 !important;
-            color: #166534 !important;
-        }
-
-            .diagnostic-shell.light-mode .command-box p,
-            .diagnostic-shell.light-mode .command-box strong {
-                color: inherit !important;
-            }
-            /* İcra Əmri təhlükəli olanda qırmızımtıl */
-            .diagnostic-shell.light-mode .command-box.Danger {
-                background-color: #fef2f2 !important;
-                border-color: #fecaca !important;
-                color: #991b1b !important;
-            }
-
-        /* ML Mühərrik Proqnozları Jurnalı (Loglar) - Şəkildə qaranlıq qalan hissə */
-        .diagnostic-shell.light-mode .prediction-logs div {
-            background-color: #f8fafc !important;
-            border: 1px solid #e2e8f0 !important;
-            border-bottom: 2px solid #cbd5e1 !important;
-            margin-bottom: 8px;
-            border-radius: 6px;
-        }
-
-        /* Mətn rəngləri */
-        .diagnostic-shell.light-mode h1,
-        .diagnostic-shell.light-mode h2,
-        .diagnostic-shell.light-mode strong {
-            color: #0f172a !important;
-        }
-
-        .diagnostic-shell.light-mode span,
-        .diagnostic-shell.light-mode p,
-        .diagnostic-shell.light-mode small,
-        .diagnostic-shell.light-mode time,
-        .diagnostic-shell.light-mode .chart-note {
-            color: #475569 !important;
-        }
-
-        /* İnput və Form elementləri */
-        .diagnostic-shell.light-mode input {
-            background-color: #ffffff !important;
-            color: #0f172a !important;
-            border: 1px solid #cbd5e1 !important;
-        }
-
-        .diagnostic-shell.light-mode button[type="submit"] {
-            background-color: #2563eb !important;
-            color: white !important;
-        }
-
-        /* Düymənin işıqlı rejimdəki halı */
-        .diagnostic-shell.light-mode .theme-toggle-btn {
-            background: #e2e8f0;
-            color: #1e293b;
-            border-color: #cbd5e1;
-        }
-
-        .diagnostic-shell.light-mode .icon-light {
-            display: none;
-        }
-
-        .diagnostic-shell.light-mode .icon-dark {
-            display: inline;
-        }
-</style>
-
-<section class="diagnostic-shell" id="diagnosticShell" data-dashboard
+<section class="dashboard-page" id="dashboardPage"
          data-rul="@Model.RemainingLife.ToString("0.0", invariant)"
          data-health="@Model.Health_Index.ToString("0.0", invariant)"
          data-degradation="@Model.DegradationPercent.ToString("0.0", invariant)"
          data-confidence="@Model.ConfidenceScore.ToString("0.0", invariant)"
-         data-risk="@Model.RiskClass"
-         data-vibration="@Model.Vibration_RMS.ToString("0.###", invariant)"
-         data-temperature="@Model.Temperature_C.ToString("0.#", invariant)"
-         data-current="@Model.Current_A.ToString("0.#", invariant)"
-         data-pressure="@Model.Pressure_PSI.ToString("0.#", invariant)"
-         data-bearing="@Model.BearingFault"
-         data-stator="@Model.StatorFault"
-         data-rotor="@Model.RotorFault"
-         data-anomaly="@Model.AnomalyState">
+         data-voltage="@Model.Voltage.ToString("0.0", invariant)"
+         data-current="@Model.Current_A.ToString("0.0", invariant)"
+         data-vibration="@Model.Vibration_RMS.ToString("0.00", invariant)"
+         data-temperature="@Model.Temperature_C.ToString("0.0", invariant)">
 
-    <header class="lab-header">
-        <div>
-            <div class="theme-toggle-container">
-                <button type="button" id="themeToggleBtn" class="theme-toggle-btn">
-                    <span class="icon-light">☀️ İşıqlı rejim</span>
-                    <span class="icon-dark">🌙 Qaranlıq rejim</span>
-                </button>
+    <!-- ═══ TOP NAVBAR ═══ -->
+    <nav class="dash-navbar">
+        <div class="nav-left">
+            <button class="nav-hamburger" aria-label="Menyu">
+                <i class="fa-solid fa-bars"></i>
+            </button>
+            <span class="nav-title">Dashboard</span>
+        </div>
+        <div class="nav-right">
+            <button class="theme-toggle-btn" id="themeToggleBtn" aria-label="Qaranlıq rejim">
+                <i class="fa-solid fa-moon"></i>
+                <span>Qaranlıq rejim</span>
+            </button>
+            <button class="nav-icon-btn" aria-label="Bildirişlər">
+                <i class="fa-solid fa-bell"></i>
+                <span class="nav-badge">1</span>
+            </button>
+            <button class="nav-icon-btn" aria-label="Təqvim">
+                <i class="fa-regular fa-calendar"></i>
+            </button>
+            <button class="nav-icon-btn" aria-label="Kömək">
+                <i class="fa-regular fa-circle-question"></i>
+            </button>
+            <div class="nav-user">
+                <div class="nav-avatar"><i class="fa-solid fa-user" style="font-size:.7rem"></i></div>
+                <div class="nav-user-info">
+                    <div class="nav-user-name">Admin</div>
+                    <div class="nav-user-role">Mühəndis</div>
+                </div>
+                <i class="fa-solid fa-chevron-down nav-chevron"></i>
             </div>
-            <span class="status-chip @Model.RiskClass">@Model.RiskLevel</span>
-            <h1>Mühərrik-01 Diaqnostika Mərkəzi</h1>
-            <p>@Model.EngineModel | Seriya nömrəsi: @Model.SerialNumber</p>
         </div>
-        <div class="lab-header-grid">
-            <div><span>Vaxt möhürü</span><strong>@now</strong></div>
-            <div><span>Proqnoz mühərriki</span><strong>@Model.ModelStatus</strong></div>
-            <div><span>Nasazlıq imzası</span><strong>@Model.FaultLabel</strong></div>
-            <div><span>ISO 10816 həddi</span><strong>7.1 mm/s</strong></div>
-        </div>
-    </header>
+    </nav>
 
-    <div class="lab-grid">
-        <main class="primary-column">
-            <section class="lab-panel rul-panel">
-                <div class="section-title">
-                    <div>
-                        <span>QÖM və sağlamlıq analitikası</span>
-                        <h2>Qalıq Faydalı Ömür</h2>
+    <div class="dash-container">
+
+        <!-- ═══ INFO STRIP ═══ -->
+        <div class="info-strip">
+            <div class="info-strip-item">
+                <div class="info-strip-label">Vaxt Möhürü</div>
+                <div class="info-strip-value" id="infoDateTime">@nowStr</div>
+            </div>
+            <div class="info-strip-item">
+                <div class="info-strip-label">Proqnoz Mühərriki</div>
+                <div class="info-strip-value">@Model.ModelStatus</div>
+            </div>
+            <div class="info-strip-item">
+                <div class="info-strip-label">Nasazlıq İmzası</div>
+                <div class="info-strip-value">@Model.FaultLabel</div>
+            </div>
+            <div class="info-strip-item">
+                <div class="info-strip-label">Məlumat Mənbəyi</div>
+                <div class="info-strip-value">Sensor simulyatoru</div>
+            </div>
+            <div class="info-strip-item">
+                <div class="info-strip-label">ISO 10816 Həddi</div>
+                <div class="info-strip-value">7.1 mm/s</div>
+            </div>
+        </div>
+
+        <div class="dashboard-main-grid">
+            
+            <!-- LEFT COLUMN: Main Content -->
+            <div class="dashboard-left-col">
+
+                <!-- ═══ SENSOR CARDS ROW ═══ -->
+                <div class="sensor-cards-row">
+
+            <!-- Card 1: Gərginlik -->
+            <div class="sensor-card" id="sensorVoltage">
+                <div class="sensor-card-header">
+                    <div class="sensor-card-title">
+                        <span class="sensor-num sensor-num-1">1</span>
+                        <span class="sensor-card-name">Gərginlik</span>
+                        <i class="fa-solid fa-circle-info sensor-card-info-icon"></i>
                     </div>
-                    <strong>@Model.RemainingLife.ToString("0.00") saat</strong>
+                    <span class="status-badge badge-@voltageStatus" id="badgeVoltage">@(voltageStatus == "allowable" ? "Normal" : voltageStatus == "warning" ? "Nəzarət" : "Təhlükəli")</span>
                 </div>
+                <div class="sensor-value-row">
+                    <span class="sensor-big-value" id="valVoltage">@Model.Voltage.ToString("0")</span>
+                    <span class="sensor-unit">V</span>
+                </div>
+                <div class="range-bar-container">
+                    <div class="range-bar" id="rangeBarVoltage">
+                        <div class="range-segment range-segment-red" style="width:20%"></div>
+                        <div class="range-segment range-segment-yellow" style="width:20%"></div>
+                        <div class="range-segment range-segment-green" style="width:30%"></div>
+                        <div class="range-segment range-segment-yellow" style="width:20%"></div>
+                        <div class="range-segment range-segment-red" style="width:10%"></div>
+                        <div class="range-marker" id="markerVoltage" style="left:40%"></div>
+                    </div>
+                    <div class="range-labels">
+                        <span class="range-label">340</span>
+                        <span class="range-label">360</span>
+                        <span class="range-label">380</span>
+                        <span class="range-label">410</span>
+                        <span class="range-label">440</span>
+                    </div>
+                </div>
+                <div class="range-legend">
+                    <span class="range-legend-item"><span class="legend-dot legend-dot-green"></span> Normal (380-410 V)</span>
+                    <span class="range-legend-item"><span class="legend-dot legend-dot-yellow"></span> Nəzarət (360-380/410-430 V)</span>
+                    <span class="range-legend-item"><span class="legend-dot legend-dot-red"></span> Təhlükəli (&lt;360/&gt;430 V)</span>
+                </div>
+            </div>
 
+            <!-- Card 2: Cərəyan -->
+            <div class="sensor-card" id="sensorCurrent">
+                <div class="sensor-card-header">
+                    <div class="sensor-card-title">
+                        <span class="sensor-num sensor-num-2">2</span>
+                        <span class="sensor-card-name">Cərəyan</span>
+                        <i class="fa-solid fa-circle-info sensor-card-info-icon"></i>
+                    </div>
+                    <span class="status-badge badge-@currentStatus" id="badgeCurrent">@(currentStatus == "allowable" ? "Normal" : currentStatus == "warning" ? "Nəzarət" : "Təhlükəli")</span>
+                </div>
+                <div class="sensor-value-row">
+                    <span class="sensor-big-value" id="valCurrent">@Model.Current_A.ToString("0.0")</span>
+                    <span class="sensor-unit">A</span>
+                </div>
+                <div class="range-bar-container">
+                    <div class="range-bar" id="rangeBarCurrent">
+                        <div class="range-segment range-segment-green" style="width:65%"></div>
+                        <div class="range-segment range-segment-yellow" style="width:15%"></div>
+                        <div class="range-segment range-segment-red" style="width:20%"></div>
+                        <div class="range-marker" id="markerCurrent" style="left:69%"></div>
+                    </div>
+                    <div class="range-labels">
+                        <span class="range-label">0</span>
+                        <span class="range-label">13</span>
+                        <span class="range-label">16</span>
+                        <span class="range-label">20</span>
+                    </div>
+                </div>
+                <div class="range-legend">
+                    <span class="range-legend-item"><span class="legend-dot legend-dot-green"></span> Normal (≤13 A)</span>
+                    <span class="range-legend-item"><span class="legend-dot legend-dot-yellow"></span> Nəzarət (13 - 16 A)</span>
+                    <span class="range-legend-item"><span class="legend-dot legend-dot-red"></span> Təhlükəli (&gt;16 A)</span>
+                </div>
+            </div>
+
+            <!-- Card 3: Temperatur -->
+            <div class="sensor-card" id="sensorTemperature">
+                <div class="sensor-card-header">
+                    <div class="sensor-card-title">
+                        <span class="sensor-num sensor-num-3">3</span>
+                        <span class="sensor-card-name">Temperatur</span>
+                        <i class="fa-solid fa-circle-info sensor-card-info-icon"></i>
+                    </div>
+                    <span class="status-badge badge-@tempStatus" id="badgeTemp">@(tempStatus == "allowable" ? "Normal" : tempStatus == "warning" ? "Nəzarət" : "Təhlükəli")</span>
+                </div>
+                <div class="sensor-value-row">
+                    <span class="sensor-big-value" id="valTemp">@Model.Temperature_C.ToString("0.0")</span>
+                    <span class="sensor-unit">°C</span>
+                </div>
+                <div class="range-bar-container">
+                    <div class="range-bar" id="rangeBarTemp">
+                        <div class="range-segment range-segment-green" style="width:70%"></div>
+                        <div class="range-segment range-segment-yellow" style="width:15%"></div>
+                        <div class="range-segment range-segment-red" style="width:15%"></div>
+                        <div class="range-marker" id="markerTemp" style="left:68%"></div>
+                    </div>
+                    <div class="range-labels">
+                        <span class="range-label">0</span>
+                        <span class="range-label">70</span>
+                        <span class="range-label">85</span>
+                        <span class="range-label">100</span>
+                    </div>
+                </div>
+                <div class="range-legend">
+                    <span class="range-legend-item"><span class="legend-dot legend-dot-green"></span> Normal (≤70)</span>
+                    <span class="range-legend-item"><span class="legend-dot legend-dot-yellow"></span> Nəzarət (70 - 85)</span>
+                    <span class="range-legend-item"><span class="legend-dot legend-dot-red"></span> Təhlükəli (&gt;85)</span>
+                </div>
+            </div>
+
+            <!-- Card 4: Vibrasiya -->
+            <div class="sensor-card" id="sensorVibration">
+                <div class="sensor-card-header">
+                    <div class="sensor-card-title">
+                        <span class="sensor-num sensor-num-4">4</span>
+                        <span class="sensor-card-name">Vibrasiya (RMS)</span>
+                        <i class="fa-solid fa-circle-info sensor-card-info-icon"></i>
+                    </div>
+                    <span class="status-badge badge-@vibStatus" id="badgeVib">@(vibStatus == "allowable" ? "Normal" : vibStatus == "warning" ? "Nəzarət" : "Təhlükəli")</span>
+                </div>
+                <div class="sensor-value-row">
+                    <span class="sensor-big-value" id="valVib">@Model.Vibration_RMS.ToString("0.00")</span>
+                    <span class="sensor-unit">mm/s</span>
+                </div>
+                <div class="range-bar-container">
+                    <div class="range-bar" id="rangeBarVib">
+                        <div class="range-segment range-segment-green" style="width:39.4%"></div>
+                        <div class="range-segment range-segment-yellow" style="width:23.9%"></div>
+                        <div class="range-segment range-segment-red" style="width:36.7%"></div>
+                        <div class="range-marker" id="markerVib" style="left:5.9%"></div>
+                    </div>
+                    <div class="range-labels">
+                        <span class="range-label">0</span>
+                        <span class="range-label">2.8</span>
+                        <span class="range-label">4.5</span>
+                        <span class="range-label">7.1</span>
+                    </div>
+                </div>
+                <div class="range-legend">
+                    <span class="range-legend-item"><span class="legend-dot legend-dot-green"></span> Normal (≤2.8)</span>
+                    <span class="range-legend-item"><span class="legend-dot legend-dot-yellow"></span> Nəzarət (2.8 - 4.5)</span>
+                    <span class="range-legend-item"><span class="legend-dot legend-dot-red"></span> Təhlükəli (&gt;4.5)</span>
+                </div>
+                <div class="sensor-card-footnote">ISO 10816 həddi: 7.1 mm/s</div>
+            </div>
+        </div>
+
+        <!-- ═══ MIDDLE PANELS ═══ -->
+        <div class="middle-panels">
+
+            <!-- RUL Panel -->
+            <div class="panel-card rul-panel">
+                <div class="panel-title">Qalıq İşləmə Müddəti (RUL)</div>
                 <div class="rul-content">
-                    <div class="gauge-stage">
-                        <canvas id="rulGauge" aria-label="Semi-circle RUL gauge"></canvas>
-                        <div class="gauge-readout">
-                            <span>@Model.RemainingLife.ToString("0")</span>
-                            <small>saat</small>
+                    <div class="rul-gauge-wrapper">
+                        <canvas id="rulGauge"></canvas>
+                        <div class="rul-center-text">
+                            <div class="rul-value" id="rulValue">@Model.RemainingLife.ToString("0")</div>
+                            <div class="rul-unit">Saat</div>
                         </div>
                     </div>
-                    <div class="health-stack">
-                        <div class="health-score">
-                            <span>Sağlamlıq göstəricisi</span>
-                            <strong>@Model.Health_Index.ToString("0.0")%</strong>
-                            <div class="health-bar"><i style="width:@Model.Health_Index.ToString("0", invariant)%"></i></div>
+                    <div class="rul-details">
+                        <p class="rul-description">Cari göstəricilərə əsasən avadanlığın işləyə biləcəyi təxmini qalıq müddət.</p>
+                        <div class="rul-meta-row">
+                            <span class="rul-meta-label">Etibarlılıq</span>
+                            <span class="rul-meta-value" id="rulConfidence">@Model.ConfidenceScore.ToString("0.0")%</span>
                         </div>
-                        <div class="health-score">
-                            <span>Deqradasiya</span>
-                            <strong>@Model.DegradationPercent.ToString("0.0")%</strong>
-                            <div class="health-bar danger"><i style="width:@Model.DegradationPercent.ToString("0", invariant)%"></i></div>
+                        <div class="rul-meta-row">
+                            <span class="rul-meta-label">Proqnoz metodu</span>
+                            <span class="rul-meta-value">ML.NET LightGBM</span>
                         </div>
-                        <div class="zone-legend">
-                            <span><i class="zone danger"></i>0-200 Təhlükəli</span>
-                            <span><i class="zone warning"></i>200-500 Xəbərdarlıq</span>
-                            <span><i class="zone optimal"></i>500+ Optimal</span>
+                        <div class="rul-meta-row" style="border-bottom:none">
+                            <span class="rul-meta-label">Son proqnoz tarixi</span>
+                            <span class="rul-meta-value">@now.ToString("dd.MM.yyyy HH:mm")</span>
                         </div>
                     </div>
                 </div>
-            </section>
+            </div>
 
-            <section class="sensor-matrix">
-                <article class="sensor-card">
-                    <span>Cərəyan</span>
-                    <strong>@Model.Current_A.ToString("0.0") A</strong>
-                    <canvas id="currentSpark"></canvas>
-                </article>
-                <article class="sensor-card">
-                    <span>Vibrasiya</span>
-                    <strong>@Model.Vibration_RMS.ToString("0.00") mm/s</strong>
-                    <canvas id="vibrationSpark"></canvas>
-                </article>
-                <article class="sensor-card">
-                    <span>Temperatur</span>
-                    <strong>@Model.Temperature_C.ToString("0.0") C</strong>
-                    <canvas id="temperatureSpark"></canvas>
-                </article>
-                <article class="sensor-card">
-                    <span>Təzyiq</span>
-                    <strong>@Model.Pressure_PSI.ToString("0.0") PSI</strong>
-                    <canvas id="pressureSpark"></canvas>
-                </article>
-            </section>
-
-            <section class="lab-panel">
-                <div class="section-title">
-                    <div>
-                        <span>Sensor birləşməsi</span>
-                        <h2>Canlı diaqnostika qrafiki</h2>
-                    </div>
-                    <strong>Çoxoxlu telemetriya</strong>
+            <!-- Status Panel -->
+            <div class="panel-card status-panel">
+                <div class="panel-title">Ümumi Status</div>
+                <div class="status-icon-wrapper status-icon-@systemStatusClass" id="statusIcon">
+                    @if (systemStatusClass == "ok")
+                    {
+                        <i class="fa-solid fa-check" style="color:var(--green)"></i>
+                    }
+                    else if (systemStatusClass == "warn")
+                    {
+                        <i class="fa-solid fa-exclamation" style="color:var(--orange)"></i>
+                    }
+                    else
+                    {
+                        <i class="fa-solid fa-xmark" style="color:var(--red)"></i>
+                    }
                 </div>
-                <canvas id="diagnosticsChart"></canvas>
-                <div class="chart-note">Qırmızı kəsik xətt ISO 10816 üzrə təhlükəli vibrasiya zonasını göstərir.</div>
-            </section>
+                <h3 class="status-heading" id="statusHeading">@systemStatusText</h3>
+                <p class="status-desc" id="statusDesc">@systemStatusDesc</p>
+                <div class="status-counts">
+                    <div class="status-count-box status-count-box-green">
+                        <div class="status-count-label status-count-label-green">Normal</div>
+                        <div class="status-count-value status-count-value-green" id="countAllow">@allowCount</div>
+                    </div>
+                    <div class="status-count-box status-count-box-orange">
+                        <div class="status-count-label status-count-label-orange">Nəzarət</div>
+                        <div class="status-count-value status-count-value-orange" id="countWarn">@warnCount</div>
+                    </div>
+                    <div class="status-count-box status-count-box-red">
+                        <div class="status-count-label status-count-label-red">Təhlükəli</div>
+                        <div class="status-count-value status-count-value-red" id="countDanger">@dangerCount</div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-            <section class="lower-grid">
-                <article class="lab-panel">
-                    <div class="section-title">
-                        <div>
-                            <span>Nasazlıq imzası</span>
-                            <h2>FFT harmonik pikləri</h2>
+
+
+        <!-- ═══ BOTTOM SECTION ═══ -->
+        <div class="bottom-section">
+
+            <!-- Trend Chart -->
+            <div class="trend-panel">
+                <div class="trend-header">
+                    <span class="trend-title">Trend Qrafikləri</span>
+                    <div class="trend-filters">
+                        <button class="trend-filter-btn active" data-range="1h">1 Saat</button>
+                        <button class="trend-filter-btn" data-range="6h">6 Saat</button>
+                        <button class="trend-filter-btn" data-range="24h">24 Saat</button>
+                        <button class="trend-filter-btn" data-range="7d">7 Gün</button>
+                    </div>
+                </div>
+                <div class="trend-legend">
+                    <span class="trend-legend-item"><span class="trend-legend-line" style="background:#3b82f6"></span> Gərginlik (V)</span>
+                    <span class="trend-legend-item"><span class="trend-legend-line" style="background:#8b5cf6"></span> Cərəyan (A)</span>
+                    <span class="trend-legend-item"><span class="trend-legend-line" style="background:#f59e0b"></span> Temperatur (°C)</span>
+                    <span class="trend-legend-item"><span class="trend-legend-line" style="background:#22c55e"></span> Vibrasiya (mm/s)</span>
+                </div>
+                <div class="trend-chart-wrapper">
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Alerts Panel -->
+            <div class="alerts-panel">
+                <div class="alerts-title">Son Xəbərdarlıqlar</div>
+                <ul class="alert-list" id="alertList">
+                    <li class="alert-item">
+                        <div class="alert-icon alert-icon-warning"><i class="fa-solid fa-exclamation"></i></div>
+                        <div class="alert-content">
+                            <div class="alert-text">Temperatur xəbərdarlıq həddinə yaxınlaşır</div>
+                            <div class="alert-detail">Cari dəyər: @Model.Temperature_C.ToString("0.0") °C</div>
                         </div>
-                        <strong>@Model.FaultLabel</strong>
-                    </div>
-                    <canvas id="faultSignatureChart"></canvas>
-                </article>
-
-                <article class="lab-panel">
-                    <div class="section-title">
-                        <div>
-                            <span>P-F əyrisinin vizuallaşdırılması</span>
-                            <h2>Deqradasiya mövqeyi</h2>
+                        <div class="alert-time" id="alertTime1">@now.ToString("HH:mm:ss")</div>
+                    </li>
+                    <li class="alert-item">
+                        <div class="alert-icon alert-icon-ok"><i class="fa-solid fa-check"></i></div>
+                        <div class="alert-content">
+                            <div class="alert-text">Vibrasiya normal həddədir</div>
+                            <div class="alert-detail">Cari dəyər: @Model.Vibration_RMS.ToString("0.00") mm/s</div>
                         </div>
-                        <strong>@Model.DegradationPercent.ToString("0")% istifadə olunub</strong>
-                    </div>
-                    <canvas id="pfCurveChart"></canvas>
-                </article>
-            </section>
-        </main>
-
-        <aside class="side-column">
-            <form method="get" class="lab-panel input-panel">
-                <div class="section-title compact">
-                    <div>
-                        <span>Giriş vektoru</span>
-                        <h2>Sensor simulyatoru</h2>
-                    </div>
-                </div>
-
-                <label><span>Dövr</span><input type="number" step="1" name="Cycle" value="@Model.Cycle.ToString("0", invariant)" /></label>
-                <label><span>Cərəyan, A</span><input type="number" step="0.1" name="Current_A" value="@Model.Current_A.ToString("0.0", invariant)" /></label>
-                <label><span>Vibrasiya RMS</span><input type="number" step="0.01" name="Vibration_RMS" value="@Model.Vibration_RMS.ToString("0.00", invariant)" /></label>
-                <label><span>Temperatur, C</span><input type="number" step="0.1" name="Temperature_C" value="@Model.Temperature_C.ToString("0.0", invariant)" /></label>
-                <label><span>Təzyiq, PSI</span><input type="number" step="0.1" name="Pressure_PSI" value="@Model.Pressure_PSI.ToString("0.0", invariant)" /></label>
-                <label><span>Sağlamlıq indeksi</span><input type="number" step="1" name="Health_Index" value="@Model.Health_Index.ToString("0", invariant)" /></label>
-
-                <button type="submit">Proqnozu yenilə</button>
-            </form>
-
-            <section class="lab-panel advisory-panel">
-                <div class="section-title compact">
-                    <div>
-                        <span>Texniki xidmət tövsiyəsi</span>
-                        <h2>İcra əmri</h2>
+                        <div class="alert-time" id="alertTime2">@now.AddSeconds(-5).ToString("HH:mm:ss")</div>
+                    </li>
+                    <li class="alert-item">
+                        <div class="alert-icon alert-icon-warning"><i class="fa-solid fa-exclamation"></i></div>
+                        <div class="alert-content">
+                            <div class="alert-text">Cərəyan xəbərdarlıq həddinə yaxınlaşır</div>
+                            <div class="alert-detail">Cari dəyər: @Model.Current_A.ToString("0.0") A</div>
+                        </div>
+                        <div class="alert-time" id="alertTime3">@now.AddSeconds(-20).ToString("HH:mm:ss")</div>
+                    </li>
+                </ul>
+                <a class="alerts-show-all" href="#">Hamısını göstər <i class="fa-solid fa-arrow-right" style="font-size:.65rem"></i></a>
+            </div>
+            </div>
+            </div>
+            
+            <!-- RIGHT COLUMN: Sidebar (Controls & Logs) -->
+            <div class="dashboard-right-col">
+                
+                <!-- Texniki Jurnallar Card -->
+                <div class="panel-card logs-card">
+                    <div class="panel-title" style="margin-bottom:8px">TEXNİKİ JURNALLAR</div>
+                    <div class="panel-subtitle" style="font-weight:700; font-size:1.1rem; color:var(--text-primary); margin-bottom:16px">ML mühərrik proqnozları</div>
+                    <div class="prediction-logs" id="predictionLogs">
+                        <!-- Logs loaded dynamically -->
                     </div>
                 </div>
-                <div class="command-box @Model.RiskClass">
-                    <strong>@Model.MaintenanceCommand</strong>
-                    <p>@Model.Recommendation</p>
-                </div>
-            </section>
 
-            @* ── NASAZLIQ VƏZİYYƏTİ (C# CS0029 xətası burada həll edildi) ── *@
-            <section class="lab-panel fault-panel">
-                <div class="section-title compact">
-                    <div>
-                        <span>Komponent diaqnostikası</span>
-                        <h2>Nasazlıq vəziyyəti</h2>
-                    </div>
+                <!-- Giriş Vektoru Card -->
+                <div class="panel-card simulator-card">
+                    <div class="panel-title" style="margin-bottom:8px">GİRİŞ VEKTORU</div>
+                    <div class="panel-subtitle" style="font-weight:700; font-size:1.1rem; color:var(--text-primary); margin-bottom:16px">Sensor simulyatoru</div>
+                    
+                    <form method="get" class="sidebar-form">
+                        <div class="sidebar-form-grid">
+                            <div class="form-group">
+                                <label class="form-label" for="inputCycle">DÖVR</label>
+                                <input class="form-control" type="number" step="1" id="inputCycle" name="Cycle" value="@Model.Cycle.ToString("0", invariant)" />
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="inputVoltage">GƏRGİNLİK, V</label>
+                                <input class="form-control" type="number" step="1" id="inputVoltage" name="Voltage" value="@Model.Voltage.ToString("0", invariant)" />
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="inputCurrent">CƏRƏYAN, A</label>
+                                <input class="form-control" type="number" step="0.1" id="inputCurrent" name="Current_A" value="@Model.Current_A.ToString("0.0", invariant)" />
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="inputVib">VİBRASİYA RMS</label>
+                                <input class="form-control" type="number" step="0.01" id="inputVib" name="Vibration_RMS" value="@Model.Vibration_RMS.ToString("0.00", invariant)" />
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="inputTemp">TEMPERATUR, C</label>
+                                <input class="form-control" type="number" step="0.1" id="inputTemp" name="Temperature_C" value="@Model.Temperature_C.ToString("0.0", invariant)" />
+                            </div>
+                            <div class="form-group form-group-full">
+                                <label class="form-label" for="inputHealth">SAĞLAMLIQ İNDEKSİ</label>
+                                <input class="form-control" type="number" step="1" id="inputHealth" name="Health_Index" value="@Model.Health_Index.ToString("0", invariant)" />
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-update-prognosis">Proqnozu yenilə</button>
+                    </form>
                 </div>
-                <div class="fault-chip-row">
-                    @* Burada int və ya string dəyərlər birbaşa şərt kimi deyil, "== 1" və ya "== Aktiv" şəklində yoxlanılır *@
-                    <span class="fault-chip @(Model.BearingFault == 1 ? "fault-crit" : "fault-ok")" id="chipBearing">
-                        Yataq @(Model.BearingFault == 1 ? "✗" : "✓")
-                    </span>
-                    <span class="fault-chip @(Model.StatorFault == 1 ? "fault-crit" : "fault-ok")" id="chipStator">
-                        Stator @(Model.StatorFault == 1 ? "✗" : "✓")
-                    </span>
-                    <span class="fault-chip @(Model.RotorFault == 1 ? "fault-crit" : "fault-ok")" id="chipRotor">
-                        Rotor @(Model.RotorFault == 1 ? "✗" : "✓")
-                    </span>
-                    <span class="fault-chip @(Model.AnomalyState == "Active" || Model.AnomalyState == "True" ? "fault-warn" : "fault-ok")" id="chipAnomaly">
-                        Anomaliya @(Model.AnomalyState == "Active" || Model.AnomalyState == "True" ? "⚠" : "—")
-                    </span>
-                </div>
-            </section>
+                
+            </div>
+            
+        </div>
 
-            <section class="lab-panel log-panel">
-                <div class="section-title compact">
-                    <div>
-                        <span>Texniki jurnallar</span>
-                        <h2>ML mühərrik proqnozları</h2>
-                    </div>
-                </div>
-                <div id="predictionLogs" class="prediction-logs" aria-live="polite">
-                    <div><time>@now.Substring(11)</time><span>Etibarlılıq göstəricisi: @Model.ConfidenceScore.ToString("0.0")%</span></div>
-                    <div><time>@now.Substring(11)</time><span>Anomaliya Tespiti: @Model.AnomalyState</span></div>
-                </div>
-            </section>
-        </aside>
+        <!-- ═══ FOOTER STRIP ═══ -->
+        <div class="footer-strip">
+            <div class="footer-item">
+                <div class="footer-item-label">Avadanlıq</div>
+                <div class="footer-item-primary">Mühərrik #1</div>
+                <div class="footer-item-secondary">ID: MOT-001</div>
+            </div>
+            <div class="footer-item">
+                <div class="footer-item-label">Yerləşmə</div>
+                <div class="footer-item-primary">İstehsalat sahəsi 2</div>
+                <div class="footer-item-secondary">Xətt: X-01</div>
+            </div>
+            <div class="footer-item">
+                <div class="footer-item-label">İş Rejimi</div>
+                <div class="footer-item-primary">Yüklü</div>
+                <div class="footer-item-secondary">RPM: 1450</div>
+            </div>
+            <div class="footer-item">
+                <div class="footer-item-label">Son Baxış</div>
+                <div class="footer-item-primary">15.05.2026</div>
+                <div class="footer-item-secondary">18 gün əvvəl</div>
+            </div>
+            <div class="footer-item">
+                <div class="footer-item-label">Növbəti Baxış</div>
+                <div class="footer-item-primary">15.06.2026</div>
+                <div class="footer-item-secondary">13 gün qaldı</div>
+            </div>
+            <div class="footer-item">
+                <div class="footer-item-label">İşləmə Müddəti</div>
+                <div class="footer-item-primary">5320 saat</div>
+                <div class="footer-item-secondary">Ümumi işləmə</div>
+            </div>
+        </div>
+
     </div>
 </section>
-
-@section Scripts {
-    <script>
-        document.addEventListener("DOMContentLoaded", function () {
-            const toggleBtn = document.getElementById("themeToggleBtn");
-            const shell = document.getElementById("diagnosticShell");
-
-            // Əvvəlki seçimi yaddaşdan (localStorage) yoxlayır
-            if (localStorage.getItem("dashboard-theme") === "light") {
-                shell.classList.add("light-mode");
-            }
-
-            // Düyməyə basıldıqda rejimi dəyişdirir və yadda saxlayır
-            toggleBtn.addEventListener("click", function () {
-                shell.classList.toggle("light-mode");
-
-                if (shell.classList.contains("light-mode")) {
-                    localStorage.setItem("dashboard-theme", "light");
-                } else {
-                    localStorage.setItem("dashboard-theme", "dark");
-                }
-            });
-        });
-    </script>
-}

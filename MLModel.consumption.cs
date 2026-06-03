@@ -16,36 +16,48 @@ namespace ESP_SmartPrognostics
         public class ModelInput
         {
             [LoadColumn(0)]
+            [ColumnName(@"Timestamp")]
+            public string Timestamp { get; set; }
+
+            [LoadColumn(1)]
             [ColumnName(@"Motor_ID")]
             public string Motor_ID { get; set; }
 
-            [LoadColumn(1)]
-            [ColumnName(@"Cycle")]
-            public float Cycle { get; set; }
-
             [LoadColumn(2)]
+            [ColumnName(@"Motor_Model")]
+            public string Motor_Model { get; set; }
+
+            [LoadColumn(3)]
+            [ColumnName(@"Operating_Hours")]
+            public float Operating_Hours { get; set; }
+
+            [LoadColumn(4)]
+            [ColumnName(@"Voltage_V")]
+            public float Voltage_V { get; set; }
+
+            [LoadColumn(5)]
             [ColumnName(@"Current_A")]
             public float Current_A { get; set; }
 
-            [LoadColumn(3)]
-            [ColumnName(@"Vibration_RMS")]
-            public float Vibration_RMS { get; set; }
-
-            [LoadColumn(4)]
-            [ColumnName(@"Temperature_C")]
-            public float Temperature_C { get; set; }
-
-            [LoadColumn(5)]
-            [ColumnName(@"Pressure_PSI")]
-            public float Pressure_PSI { get; set; }
-
             [LoadColumn(6)]
+            [ColumnName(@"Motor_Temperature_C")]
+            public float Motor_Temperature_C { get; set; }
+
+            [LoadColumn(7)]
+            [ColumnName(@"Vibration_g")]
+            public float Vibration_g { get; set; }
+
+            [LoadColumn(8)]
             [ColumnName(@"Health_Index")]
             public float Health_Index { get; set; }
 
-            [LoadColumn(7)]
-            [ColumnName(@"Remaining_Life")]
-            public float Remaining_Life { get; set; }
+            [LoadColumn(9)]
+            [ColumnName(@"Remaining_Life_hours")]
+            public float Remaining_Life_hours { get; set; }
+
+            [LoadColumn(10)]
+            [ColumnName(@"Condition")]
+            public string Condition { get; set; }
 
         }
 
@@ -57,29 +69,38 @@ namespace ESP_SmartPrognostics
         #region model output class
         public class ModelOutput
         {
+            [ColumnName(@"Timestamp")]
+            public float[] Timestamp { get; set; }
+
             [ColumnName(@"Motor_ID")]
             public float[] Motor_ID { get; set; }
 
-            [ColumnName(@"Cycle")]
-            public float Cycle { get; set; }
+            [ColumnName(@"Motor_Model")]
+            public float[] Motor_Model { get; set; }
+
+            [ColumnName(@"Operating_Hours")]
+            public float Operating_Hours { get; set; }
+
+            [ColumnName(@"Voltage_V")]
+            public float Voltage_V { get; set; }
 
             [ColumnName(@"Current_A")]
             public float Current_A { get; set; }
 
-            [ColumnName(@"Vibration_RMS")]
-            public float Vibration_RMS { get; set; }
+            [ColumnName(@"Motor_Temperature_C")]
+            public float Motor_Temperature_C { get; set; }
 
-            [ColumnName(@"Temperature_C")]
-            public float Temperature_C { get; set; }
-
-            [ColumnName(@"Pressure_PSI")]
-            public float Pressure_PSI { get; set; }
+            [ColumnName(@"Vibration_g")]
+            public float Vibration_g { get; set; }
 
             [ColumnName(@"Health_Index")]
             public float Health_Index { get; set; }
 
-            [ColumnName(@"Remaining_Life")]
-            public float Remaining_Life { get; set; }
+            [ColumnName(@"Remaining_Life_hours")]
+            public float Remaining_Life_hours { get; set; }
+
+            [ColumnName(@"Condition")]
+            public float[] Condition { get; set; }
 
             [ColumnName(@"Features")]
             public float[] Features { get; set; }

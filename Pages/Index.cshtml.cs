@@ -11,6 +11,9 @@ namespace ESP_SmartPrognostics.Pages
         public float Cycle { get; set; } = 420;
 
         [BindProperty(SupportsGet = true)]
+        public float Voltage { get; set; } = 380;
+
+        [BindProperty(SupportsGet = true)]
         public float Current_A { get; set; } = 13.8f;
 
         [BindProperty(SupportsGet = true)]
@@ -20,9 +23,6 @@ namespace ESP_SmartPrognostics.Pages
         public float Temperature_C { get; set; } = 68;
 
         [BindProperty(SupportsGet = true)]
-        public float Pressure_PSI { get; set; } = 31;
-
-        [BindProperty(SupportsGet = true)]
         public float Health_Index { get; set; } = 84;
 
         public float RemainingLife { get; private set; }
@@ -30,7 +30,7 @@ namespace ESP_SmartPrognostics.Pages
         public float ConfidenceScore { get; private set; }
         public string EngineModel { get; private set; } = "ESP-75 Dərinlik Nasos Mühərriki";
         public string SerialNumber { get; private set; } = "SN-ESP-2048-AZ";
-        public string ModelStatus { get; private set; } = "ML.NET FastTree reqressiyası";
+        public string ModelStatus { get; private set; } = "ML.NET LightGBM reqressiyası";
         public string RiskLevel { get; private set; } = "Normal";
         public string RiskClass { get; private set; } = "normal";
         public string Recommendation { get; private set; } = "Mühərrik stabil işləyir. Planlı monitorinqi davam etdirin.";
@@ -50,12 +50,15 @@ namespace ESP_SmartPrognostics.Pages
         {
             var input = new MLModel.ModelInput
             {
+                Timestamp = DateTime.Now.ToString("O"),
                 Motor_ID = "ESP-2048",
-                Cycle = Cycle,
+                Motor_Model = EngineModel,
+                Condition = EstimateCondition(),
+                Operating_Hours = Cycle,
+                Voltage_V = Voltage,
                 Current_A = Current_A,
-                Vibration_RMS = Vibration_RMS,
-                Temperature_C = Temperature_C,
-                Pressure_PSI = Pressure_PSI,
+                Motor_Temperature_C = Temperature_C,
+                Vibration_g = Vibration_RMS,
                 Health_Index = Health_Index
             };
 
@@ -79,12 +82,28 @@ namespace ESP_SmartPrognostics.Pages
         {
             var degradation =
                 (Cycle * 0.28f) +
+                (MathF.Abs(Voltage - 380) * 1.8f) +
                 (Current_A * 10.5f) +
                 (Vibration_RMS * 340f) +
                 (Temperature_C * 4.2f) -
                 (Health_Index * 5.5f);
 
             return MathF.Max(35, 980 - degradation);
+        }
+
+        private string EstimateCondition()
+        {
+            if (Health_Index < 55 || Vibration_RMS >= 4.5f || Temperature_C >= 85 || Current_A >= 16)
+            {
+                return "Critical";
+            }
+
+            if (Health_Index < 80 || Vibration_RMS >= 2.8f || Temperature_C >= 70 || Current_A >= 13 || Voltage < 360 || Voltage > 410)
+            {
+                return "Warning";
+            }
+
+            return "Normal";
         }
 
         private void SetRiskState()
