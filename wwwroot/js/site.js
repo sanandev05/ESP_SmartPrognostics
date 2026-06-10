@@ -21,15 +21,45 @@
         temperature: parseFloat(page.dataset.temperature) || 68
     };
 
-    let state = { ...seed };
-    let tick = 0;
-
     /* ── 2. Helpers ─────────────────────────────────────────────── */
     const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
     const jitter = (v, amp) => v + (Math.random() - 0.5) * 2 * amp;
     const fmt0 = v => Math.round(v).toString();
     const fmt1 = v => v.toFixed(1);
     const fmt2 = v => v.toFixed(2);
+
+    function countDangerousSensorsFor(values) {
+        let count = 0;
+        if (values.voltage < 340 || values.voltage > 430) count++;
+        if (values.current > 16) count++;
+        if (values.temperature > 85) count++;
+        if (values.vibration > 4.5) count++;
+        return count;
+    }
+
+    function countWarningSensorsFor(values) {
+        let count = 0;
+        if ((values.voltage < 360 || values.voltage > 410) && values.voltage >= 340 && values.voltage <= 430) count++;
+        if (values.current > 13 && values.current <= 16) count++;
+        if (values.temperature > 70 && values.temperature <= 85) count++;
+        if (values.vibration > 2.8 && values.vibration <= 4.5) count++;
+        return count;
+    }
+
+    function applyRulSafetyLimits(values) {
+        const dangerousCount = countDangerousSensorsFor(values);
+        const warningCount = countWarningSensorsFor(values);
+
+        if (dangerousCount >= 3) return Math.min(values.rul, 120);
+        if (dangerousCount > 0) return Math.min(values.rul, 220);
+        if (warningCount > 0) return Math.min(values.rul, 520);
+        return Math.min(values.rul, 1500);
+    }
+
+    seed.rul = applyRulSafetyLimits(seed);
+
+    let state = { ...seed };
+    let tick = 0;
 
     function setEl(id, text) {
         const el = document.getElementById(id);
@@ -110,7 +140,7 @@
                         pointRadius: 0,
                         tension: 0.4,
                         fill: true,
-                        yAxisID: "yLeft"
+                        yAxisID: "yVoltage"
                     },
                     {
                         label: "Cərəyan (A)",
@@ -181,6 +211,12 @@
                             stepSize: 5
                         }
                     },
+                    yVoltage: {
+                        display: false,
+                        min: 340,
+                        max: 450,
+                        grid: { display: false, drawBorder: false }
+                    },
                     yRight: {
                         position: "right",
                         min: 0,
@@ -217,6 +253,12 @@
         if (value <= thresholds[0]) return "allowable";
         if (value <= thresholds[1]) return "warning";
         return "dangerous";
+    }
+
+    function getVoltageStatus(value) {
+        if (value < 340 || value > 430) return "dangerous";
+        if (value < 360 || value > 410) return "warning";
+        return "allowable";
     }
 
     function setBadge(id, status) {
@@ -264,10 +306,7 @@
         updateRangeMarker("markerVib", state.vibration, 0, 7.1);
 
         /* Status badges */
-        let vSt = "allowable";
-        if (state.voltage < 340 || state.voltage > 430) vSt = "dangerous";
-        else if (state.voltage < 360 || state.voltage > 410) vSt = "warning";
-
+        const vSt = getVoltageStatus(state.voltage);
         const cSt = getStatus(state.current, [13, 16]);
         const tSt = getStatus(state.temperature, [70, 85]);
         const vibSt = getStatus(state.vibration, [2.8, 4.5]);
@@ -309,7 +348,7 @@
             } else {
                 statusIcon.className = "status-icon-wrapper status-icon-ok";
                 statusIcon.innerHTML = '<i class="fa-solid fa-check" style="color:var(--green)"></i>';
-                statusHeading.textContent = "SİSTEM NORMALDİR";
+                statusHeading.textContent = "SİSTEM NORMALDIR";
                 statusDesc.textContent = "Bütün göstəricilər icazə verilən hədlər daxilindədir.";
             }
         }
@@ -363,25 +402,28 @@
 
         const ts = new Date().toLocaleTimeString("az-AZ", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
-        if (state.voltage < 360 || state.voltage > 410) {
+        const pushSensorAlert = (status, text, detail) => {
+            if (status === "allowable") return;
             alertMessages.unshift({
-                type: "warning",
+                type: status === "dangerous" ? "danger" : "warning",
                 icon: "exclamation",
-                text: "Gərginlik xəbərdarlıq həddindədir",
-                detail: "Cari dəyər: " + fmt0(state.voltage) + " V",
+                text: text(status),
+                detail,
                 time: ts
             });
-        }
+        };
 
-        if (state.temperature > 70) {
-            alertMessages.unshift({
-                type: "warning",
-                icon: "exclamation",
-                text: "Temperatur xəbərdarlıq həddinə yaxınlaşır",
-                detail: "Cari dəyər: " + fmt1(state.temperature) + " °C",
-                time: ts
-            });
-        }
+        pushSensorAlert(
+            getVoltageStatus(state.voltage),
+            status => status === "dangerous" ? "Gərginlik təhlükəli həddədir" : "Gərginlik xəbərdarlıq həddindədir",
+            "Cari dəyər: " + fmt0(state.voltage) + " V"
+        );
+
+        pushSensorAlert(
+            getStatus(state.temperature, [70, 85]),
+            status => status === "dangerous" ? "Temperatur təhlükəli həddədir" : "Temperatur xəbərdarlıq həddinə yaxınlaşır",
+            "Cari dəyər: " + fmt1(state.temperature) + " °C"
+        );
 
         if (state.vibration <= 2.8) {
             alertMessages.unshift({
@@ -392,24 +434,18 @@
                 time: ts
             });
         } else {
-            alertMessages.unshift({
-                type: "warning",
-                icon: "exclamation",
-                text: "Vibrasiya xəbərdarlıq həddinə yaxınlaşır",
-                detail: "Cari dəyər: " + fmt2(state.vibration) + " mm/s",
-                time: ts
-            });
+            pushSensorAlert(
+                getStatus(state.vibration, [2.8, 4.5]),
+                status => status === "dangerous" ? "Vibrasiya təhlükəli həddədir" : "Vibrasiya xəbərdarlıq həddinə yaxınlaşır",
+                "Cari dəyər: " + fmt2(state.vibration) + " mm/s"
+            );
         }
 
-        if (state.current > 13) {
-            alertMessages.unshift({
-                type: "warning",
-                icon: "exclamation",
-                text: "Cərəyan xəbərdarlıq həddinə yaxınlaşır",
-                detail: "Cari dəyər: " + fmt2(state.current) + " A",
-                time: ts
-            });
-        }
+        pushSensorAlert(
+            getStatus(state.current, [13, 16]),
+            status => status === "dangerous" ? "Cərəyan təhlükəli həddədir" : "Cərəyan xəbərdarlıq həddinə yaxınlaşır",
+            "Cari dəyər: " + fmt2(state.current) + " A"
+        );
 
         // Keep max 10
         while (alertMessages.length > 10) alertMessages.pop();
@@ -506,12 +542,29 @@
         const logsEl = document.getElementById("predictionLogs");
         if (!logsEl) return;
 
+        const logVersion = "qim-safety-v2";
         let logs = [];
         try {
-            logs = JSON.parse(localStorage.getItem("prediction_logs")) || [];
+            logs = localStorage.getItem("prediction_logs_version") === logVersion
+                ? JSON.parse(localStorage.getItem("prediction_logs")) || []
+                : [];
         } catch (e) {
             logs = [];
         }
+
+        logs = logs.map(log => ({
+            ...log,
+            text: String(log.text || "")
+                .replace(new RegExp(["anom", "aliya"].join(""), "gi"), "qeyri-normal")
+                .replace(new RegExp(["qeyr", "normal"].join("-"), "gi"), "qeyri-normal")
+                .replace(new RegExp(["təs", "biti"].join(""), "gi"), "aşkarlanması")
+                .replace(/qeyri-normal aşkarlanması/gi, "Qeyri-normal halın aşkarlanması")
+                .replace(/qeyri-normal halın aşkarlanması/gi, "Qeyri-normal halın aşkarlanması")
+                .replace(new RegExp(["Q", "ÖM"].join(""), "g"), "QİM")
+        })).filter(log => {
+            const match = String(log.text || "").match(/QİM:\s*(\d+)/);
+            return !match || Number(match[1]) <= 1500;
+        });
 
         const isAnomaly = seed.vibration >= 0.72 || seed.temperature >= 84 || seed.current >= 16;
         const currentLogEntry = {
@@ -522,21 +575,33 @@
         };
 
         const hasParams = window.location.search.indexOf("Cycle") > -1;
-        const lastEntry = logs[0];
+        const lastEntry = logs.find(log => String(log.text || "").includes("QİM:"));
         
         const isDifferent = !lastEntry || 
-                            lastEntry.text.indexOf("QÖM: " + currentLogEntry.rul) === -1 || 
+                            lastEntry.text.indexOf("QİM: " + currentLogEntry.rul) === -1 || 
                             lastEntry.text.indexOf("Etibarlılıq: " + currentLogEntry.confidence) === -1;
 
         if (hasParams && isDifferent) {
+            logs = logs.filter(log => {
+                const text = String(log.text || "");
+                return !text.includes("QİM:") && !text.includes("Qeyri-normal halın aşkarlanması:");
+            });
+
             logs.unshift({
                 time: currentLogEntry.time,
-                text: `Etibarlılıq: ${currentLogEntry.confidence}% | QÖM: ${currentLogEntry.rul} saat`
+                text: `Etibarlılıq: ${currentLogEntry.confidence}% | QİM: ${currentLogEntry.rul} saat`
             });
             logs.unshift({
                 time: currentLogEntry.time,
-                text: `Anomaliya təsbiti: ${currentLogEntry.anomaly}`
+                text: `Qeyri-normal halın aşkarlanması: ${currentLogEntry.anomaly}`
             });
+        }
+
+        if (!hasParams && logs.length > 0) {
+            const hasCurrentRul = logs.some(log => String(log.text || "").includes(`QİM: ${currentLogEntry.rul}`));
+            if (!hasCurrentRul) {
+                logs = [];
+            }
         }
 
         if (logs.length === 0) {
@@ -547,9 +612,9 @@
             };
 
             logs = [
-                { time: formatTime(0), text: `Anomaliya təsbiti: ${currentLogEntry.anomaly}` },
-                { time: formatTime(8), text: `Etibarlılıq: 96% | QÖM: 684 saat` },
-                { time: formatTime(12), text: "Anomaliya təsbiti: Yoxdur" }
+                { time: formatTime(0), text: `Qeyri-normal halın aşkarlanması: ${currentLogEntry.anomaly}` },
+                { time: formatTime(8), text: `Etibarlılıq: ${currentLogEntry.confidence}% | QİM: ${currentLogEntry.rul} saat` },
+                { time: formatTime(12), text: "Qeyri-normal halın aşkarlanması: Yoxdur" }
             ];
         }
 
@@ -557,6 +622,7 @@
             logs = logs.slice(0, 8);
         }
 
+        localStorage.setItem("prediction_logs_version", logVersion);
         localStorage.setItem("prediction_logs", JSON.stringify(logs));
 
         logsEl.innerHTML = logs.map(log => `

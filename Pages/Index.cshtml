@@ -1,7 +1,7 @@
 @page
 @model IndexModel
 @{
-    ViewData["Title"] = "Dashboard";
+    ViewData["Title"] = "İdarə paneli";
 
     var now = DateTime.Now;
     var nowStr = now.ToString("dd.MM.yyyy HH:mm:ss");
@@ -21,7 +21,7 @@
     // Overall system status
     bool systemOk = dangerCount == 0;
     string systemStatusClass = dangerCount > 0 ? "danger" : warnCount > 0 ? "warn" : "ok";
-    string systemStatusText = dangerCount > 0 ? "SİSTEM TƏHLÜKƏDƏ" : warnCount > 0 ? "SİSTEM NƏZARƏTDƏ" : "SİSTEM NORMALDİR";
+    string systemStatusText = dangerCount > 0 ? "SİSTEM TƏHLÜKƏDƏ" : warnCount > 0 ? "SİSTEM NƏZARƏTDƏ" : "SİSTEM NORMALDIR";
     string systemStatusDesc = dangerCount > 0
         ? "Bəzi göstəricilər təhlükəli həddə çatıb. Dərhal müdaxilə tələb olunur."
         : warnCount > 0
@@ -45,7 +45,7 @@
             <button class="nav-hamburger" aria-label="Menyu">
                 <i class="fa-solid fa-bars"></i>
             </button>
-            <span class="nav-title">Dashboard</span>
+            <span class="nav-title">İdarə paneli</span>
         </div>
         <div class="nav-right">
             <button class="theme-toggle-btn" id="themeToggleBtn" aria-label="Qaranlıq rejim">
@@ -78,23 +78,23 @@
         <!-- ═══ INFO STRIP ═══ -->
         <div class="info-strip">
             <div class="info-strip-item">
-                <div class="info-strip-label">Vaxt Möhürü</div>
+                <div class="info-strip-label">Vaxt göstəricisi</div>
                 <div class="info-strip-value" id="infoDateTime">@nowStr</div>
             </div>
             <div class="info-strip-item">
-                <div class="info-strip-label">Proqnoz Mühərriki</div>
+                <div class="info-strip-label">Proqnoz modeli</div>
                 <div class="info-strip-value">@Model.ModelStatus</div>
             </div>
             <div class="info-strip-item">
-                <div class="info-strip-label">Nasazlıq İmzası</div>
+                <div class="info-strip-label">Nasazlıq göstəricisi</div>
                 <div class="info-strip-value">@Model.FaultLabel</div>
             </div>
             <div class="info-strip-item">
-                <div class="info-strip-label">Məlumat Mənbəyi</div>
+                <div class="info-strip-label">Məlumat mənbəyi</div>
                 <div class="info-strip-value">Sensor simulyatoru</div>
             </div>
             <div class="info-strip-item">
-                <div class="info-strip-label">ISO 10816 Həddi</div>
+                <div class="info-strip-label">ISO 10816 həddi</div>
                 <div class="info-strip-value">7.1 mm/s</div>
             </div>
         </div>
@@ -257,13 +257,13 @@
 
             <!-- RUL Panel -->
             <div class="panel-card rul-panel">
-                <div class="panel-title">Qalıq İşləmə Müddəti (RUL)</div>
+                <div class="panel-title">Qalıq işləmə müddəti (QİM)</div>
                 <div class="rul-content">
                     <div class="rul-gauge-wrapper">
                         <canvas id="rulGauge"></canvas>
                         <div class="rul-center-text">
                             <div class="rul-value" id="rulValue">@Model.RemainingLife.ToString("0")</div>
-                            <div class="rul-unit">Saat</div>
+                            <div class="rul-unit">saat</div>
                         </div>
                     </div>
                     <div class="rul-details">
@@ -273,11 +273,11 @@
                             <span class="rul-meta-value" id="rulConfidence">@Model.ConfidenceScore.ToString("0.0")%</span>
                         </div>
                         <div class="rul-meta-row">
-                            <span class="rul-meta-label">Proqnoz metodu</span>
+                            <span class="rul-meta-label">Proqnoz üsulu</span>
                             <span class="rul-meta-value">ML.NET LightGBM</span>
                         </div>
                         <div class="rul-meta-row" style="border-bottom:none">
-                            <span class="rul-meta-label">Son proqnoz tarixi</span>
+                            <span class="rul-meta-label">Son proqnoz vaxtı</span>
                             <span class="rul-meta-value">@now.ToString("dd.MM.yyyy HH:mm")</span>
                         </div>
                     </div>
@@ -286,7 +286,7 @@
 
             <!-- Status Panel -->
             <div class="panel-card status-panel">
-                <div class="panel-title">Ümumi Status</div>
+                <div class="panel-title">Ümumi vəziyyət</div>
                 <div class="status-icon-wrapper status-icon-@systemStatusClass" id="statusIcon">
                     @if (systemStatusClass == "ok")
                     {
@@ -328,12 +328,12 @@
             <!-- Trend Chart -->
             <div class="trend-panel">
                 <div class="trend-header">
-                    <span class="trend-title">Trend Qrafikləri</span>
+                    <span class="trend-title">Trend qrafikləri</span>
                     <div class="trend-filters">
-                        <button class="trend-filter-btn active" data-range="1h">1 Saat</button>
-                        <button class="trend-filter-btn" data-range="6h">6 Saat</button>
-                        <button class="trend-filter-btn" data-range="24h">24 Saat</button>
-                        <button class="trend-filter-btn" data-range="7d">7 Gün</button>
+                        <button class="trend-filter-btn active" data-range="1h">1 saat</button>
+                        <button class="trend-filter-btn" data-range="6h">6 saat</button>
+                        <button class="trend-filter-btn" data-range="24h">24 saat</button>
+                        <button class="trend-filter-btn" data-range="7d">7 gün</button>
                     </div>
                 </div>
                 <div class="trend-legend">
@@ -349,7 +349,7 @@
 
             <!-- Alerts Panel -->
             <div class="alerts-panel">
-                <div class="alerts-title">Son Xəbərdarlıqlar</div>
+                <div class="alerts-title">Son xəbərdarlıqlar</div>
                 <ul class="alert-list" id="alertList">
                     <li class="alert-item">
                         <div class="alert-icon alert-icon-warning"><i class="fa-solid fa-exclamation"></i></div>
@@ -386,8 +386,8 @@
                 
                 <!-- Texniki Jurnallar Card -->
                 <div class="panel-card logs-card">
-                    <div class="panel-title" style="margin-bottom:8px">TEXNİKİ JURNALLAR</div>
-                    <div class="panel-subtitle" style="font-weight:700; font-size:1.1rem; color:var(--text-primary); margin-bottom:16px">ML mühərrik proqnozları</div>
+                    <div class="panel-title" style="margin-bottom:8px">Texniki jurnallar</div>
+                    <div class="panel-subtitle" style="font-weight:700; font-size:1.1rem; color:var(--text-primary); margin-bottom:16px">ML mühərrikinin proqnozları</div>
                     <div class="prediction-logs" id="predictionLogs">
                         <!-- Logs loaded dynamically -->
                     </div>
@@ -395,13 +395,13 @@
 
                 <!-- Giriş Vektoru Card -->
                 <div class="panel-card simulator-card">
-                    <div class="panel-title" style="margin-bottom:8px">GİRİŞ VEKTORU</div>
+                    <div class="panel-title" style="margin-bottom:8px">Giriş məlumatları</div>
                     <div class="panel-subtitle" style="font-weight:700; font-size:1.1rem; color:var(--text-primary); margin-bottom:16px">Sensor simulyatoru</div>
                     
                     <form method="get" class="sidebar-form">
                         <div class="sidebar-form-grid">
                             <div class="form-group">
-                                <label class="form-label" for="inputCycle">DÖVR</label>
+                                <label class="form-label" for="inputCycle">İŞ DÖVRÜ</label>
                                 <input class="form-control" type="number" step="1" id="inputCycle" name="Cycle" value="@Model.Cycle.ToString("0", invariant)" />
                             </div>
                             <div class="form-group">
@@ -413,11 +413,11 @@
                                 <input class="form-control" type="number" step="0.1" id="inputCurrent" name="Current_A" value="@Model.Current_A.ToString("0.0", invariant)" />
                             </div>
                             <div class="form-group">
-                                <label class="form-label" for="inputVib">VİBRASİYA RMS</label>
+                                <label class="form-label" for="inputVib">VİBRASİYA (RMS)</label>
                                 <input class="form-control" type="number" step="0.01" id="inputVib" name="Vibration_RMS" value="@Model.Vibration_RMS.ToString("0.00", invariant)" />
                             </div>
                             <div class="form-group">
-                                <label class="form-label" for="inputTemp">TEMPERATUR, C</label>
+                                <label class="form-label" for="inputTemp">TEMPERATUR, °C</label>
                                 <input class="form-control" type="number" step="0.1" id="inputTemp" name="Temperature_C" value="@Model.Temperature_C.ToString("0.0", invariant)" />
                             </div>
                             <div class="form-group form-group-full">
@@ -446,22 +446,22 @@
                 <div class="footer-item-secondary">Xətt: X-01</div>
             </div>
             <div class="footer-item">
-                <div class="footer-item-label">İş Rejimi</div>
+                <div class="footer-item-label">İş rejimi</div>
                 <div class="footer-item-primary">Yüklü</div>
                 <div class="footer-item-secondary">RPM: 1450</div>
             </div>
             <div class="footer-item">
-                <div class="footer-item-label">Son Baxış</div>
+                <div class="footer-item-label">Son baxış</div>
                 <div class="footer-item-primary">15.05.2026</div>
                 <div class="footer-item-secondary">18 gün əvvəl</div>
             </div>
             <div class="footer-item">
-                <div class="footer-item-label">Növbəti Baxış</div>
+                <div class="footer-item-label">Növbəti baxış</div>
                 <div class="footer-item-primary">15.06.2026</div>
                 <div class="footer-item-secondary">13 gün qaldı</div>
             </div>
             <div class="footer-item">
-                <div class="footer-item-label">İşləmə Müddəti</div>
+                <div class="footer-item-label">İşləmə müddəti</div>
                 <div class="footer-item-primary">5320 saat</div>
                 <div class="footer-item-secondary">Ümumi işləmə</div>
             </div>

@@ -30,12 +30,12 @@ namespace ESP_SmartPrognostics.Pages
         public float ConfidenceScore { get; private set; }
         public string EngineModel { get; private set; } = "ESP-75 Dərinlik Nasos Mühərriki";
         public string SerialNumber { get; private set; } = "SN-ESP-2048-AZ";
-        public string ModelStatus { get; private set; } = "ML.NET LightGBM reqressiyası";
+        public string ModelStatus { get; private set; } = "ML.NET LightGBM reqressiya modeli";
         public string RiskLevel { get; private set; } = "Normal";
         public string RiskClass { get; private set; } = "normal";
-        public string Recommendation { get; private set; } = "Mühərrik stabil işləyir. Planlı monitorinqi davam etdirin.";
+        public string Recommendation { get; private set; } = "Mühərrik sabit işləyir. Planlı monitorinqi davam etdirin.";
         public string MaintenanceCommand { get; private set; } = "Planlı monitorinqi davam etdir";
-        public string AnomalyState { get; private set; } = "Anomaliya yoxdur";
+        public string AnomalyState { get; private set; } = "qeyri-normal hal yoxdur";
         public string FaultLabel { get; private set; } = "Yastıq aşınması";
         public int BearingFault { get; private set; }
         public int StatorFault { get; private set; }
@@ -65,11 +65,13 @@ namespace ESP_SmartPrognostics.Pages
             try
             {
                 RemainingLife = MathF.Max(0, MLModel.Predict(input).Score);
+                ApplySensorSafetyLimits();
             }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "ML.NET model could not be loaded. Dashboard fallback score is used.");
                 RemainingLife = EstimateFallbackRemainingLife();
+                ApplySensorSafetyLimits();
                 ModelStatus = "Demo rejimi: model faylı və ya paketlər yüklənməyib";
             }
 
@@ -106,6 +108,45 @@ namespace ESP_SmartPrognostics.Pages
             return "Normal";
         }
 
+        private void ApplySensorSafetyLimits()
+        {
+            var dangerousCount = CountDangerousSensors();
+            var warningCount = CountWarningSensors();
+
+            if (dangerousCount >= 3)
+            {
+                RemainingLife = MathF.Min(RemainingLife, 120);
+            }
+            else if (dangerousCount > 0)
+            {
+                RemainingLife = MathF.Min(RemainingLife, 220);
+            }
+            else if (warningCount > 0)
+            {
+                RemainingLife = MathF.Min(RemainingLife, 520);
+            }
+        }
+
+        private int CountDangerousSensors()
+        {
+            var count = 0;
+            if (Voltage < 340 || Voltage > 430) count++;
+            if (Current_A > 16) count++;
+            if (Temperature_C > 85) count++;
+            if (Vibration_RMS > 4.5f) count++;
+            return count;
+        }
+
+        private int CountWarningSensors()
+        {
+            var count = 0;
+            if ((Voltage < 360 || Voltage > 410) && Voltage >= 340 && Voltage <= 430) count++;
+            if (Current_A > 13 && Current_A <= 16) count++;
+            if (Temperature_C > 70 && Temperature_C <= 85) count++;
+            if (Vibration_RMS > 2.8f && Vibration_RMS <= 4.5f) count++;
+            return count;
+        }
+
         private void SetRiskState()
         {
             if (RemainingLife < 200)
@@ -126,7 +167,7 @@ namespace ESP_SmartPrognostics.Pages
             {
                 RiskLevel = "Normal";
                 RiskClass = "normal";
-                Recommendation = "Mühərrik stabil işləyir. Planlı monitorinqi davam etdirin.";
+                Recommendation = "Mühərrik sabit işləyir. Planlı monitorinqi davam etdirin.";
                 MaintenanceCommand = "Planlı monitorinqi davam etdir";
             }
         }
@@ -151,17 +192,24 @@ namespace ESP_SmartPrognostics.Pages
 
         private void SetDerivedAnalytics()
         {
-            DegradationPercent = Math.Clamp(100 - Health_Index, 0, 100);
-            ConfidenceScore = Math.Clamp(92 - (Vibration_RMS * 9) - Math.Max(0, Temperature_C - 70) * 0.22f, 71, 98);
+            var sensorDegradation =
+                (CountDangerousSensors() * 22) +
+                (CountWarningSensors() * 9) +
+                MathF.Max(0, MathF.Abs(Voltage - 380) * 0.25f) +
+                MathF.Max(0, (Temperature_C - 70) * 0.35f) +
+                MathF.Max(0, (Vibration_RMS - 2.8f) * 5.5f);
+
+            DegradationPercent = Math.Clamp(MathF.Max(100 - Health_Index, sensorDegradation), 0, 100);
+            ConfidenceScore = Math.Clamp(96 - DegradationPercent * 0.45f - (Vibration_RMS * 1.4f), 45, 98);
 
             AnomalyState = Vibration_RMS >= 0.72f || Temperature_C >= 84 || Current_A >= 16
-                ? "Anomaliya aşkarlandı"
-                : "Siqnal stabildir";
+                ? "qeyri-normal hal aşkarlanıb"
+                : "Siqnal sabitdir";
 
             if (FaultLabel.Contains("Yastıq"))
             {
                 MaintenanceCommand = RemainingLife < 500
-                    ? "Yastığı yağla və baxış planlaşdır"
+                    ? "Yastığı yağla və texniki baxış planlaşdır"
                     : MaintenanceCommand;
             }
             else if (FaultLabel.Contains("Stator"))
